@@ -1,5 +1,5 @@
 """
-Project embeddings to 2D using UMAP for the interactive map.
+Project embeddings to 2D using UMAP (PCA fallback if umap-learn missing).
 
 Prerequisites:
   python scripts/build_embeddings.py
@@ -16,7 +16,7 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.embedding import load_embeddings
-from src.projection import compute_umap, save_coordinates
+from src.projection import compute_projection, save_coordinates
 
 
 def main() -> None:
@@ -29,12 +29,17 @@ def main() -> None:
 
     print(f"Loading embeddings from {embeddings_path}")
     embeddings = load_embeddings(embeddings_path)
+    print(f"Shape: {embeddings.shape}")
 
     examples = pd.read_csv(examples_path)
-    ids = examples["id"].tolist()
+    # Prefer canonical 'id' column; fall back to example_id.
+    if "id" in examples.columns:
+        ids = examples["id"].tolist()
+    else:
+        ids = examples["example_id"].tolist()
 
-    print(f"Running UMAP on {len(ids)} concepts (n_neighbors=15, min_dist=0.1)...")
-    coords = compute_umap(
+    print(f"Computing 2D projection for {len(ids)} examples (n_neighbors=15, min_dist=0.1)...")
+    coords, method = compute_projection(
         embeddings,
         n_neighbors=15,
         min_dist=0.1,
@@ -42,6 +47,7 @@ def main() -> None:
         n_components=2,
         random_state=42,
     )
+    print(f"Projection method: {method}")
 
     save_coordinates(ids, coords, out_path)
     print(f"Saved coordinates to {out_path}")

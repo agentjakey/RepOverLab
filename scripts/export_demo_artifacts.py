@@ -1,12 +1,14 @@
 """
-Full pipeline: generate all demo artifacts from the seed CSV.
+Full pipeline: validate seed CSV, embed, compute similarity, project to 2D,
+compute overlap and boundary scores, write artifact metadata.
 
-By default, this uses SYNTHETIC embeddings so it runs without downloading
-the sentence-transformers model. Pass --use-model to use real embeddings.
+By default, uses real sentence-transformers embeddings (all-MiniLM-L6-v2),
+falling back to TF-IDF + TruncatedSVD if the model cannot be loaded.
+Pass --synthetic to skip embedding entirely and use structured synthetic vectors.
 
 Usage:
-  python scripts/export_demo_artifacts.py              # synthetic (fast, no download)
-  python scripts/export_demo_artifacts.py --use-model  # real embeddings (slow, 90MB download)
+  python scripts/export_demo_artifacts.py              # real embeddings (or TF-IDF fallback)
+  python scripts/export_demo_artifacts.py --synthetic  # synthetic, no model needed
 
 Outputs in artifacts/:
   demo_examples.csv
@@ -27,8 +29,14 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.data_schema import SafeExample, SafetyBand, Domain, Framing
-from src.overlap import compute_overlap_scores, save_overlap_scores
-from src.projection import save_coordinates
+from src.overlap import (
+    compute_overlap_scores,
+    compute_nearest_cross_band_sim,
+    compute_centroid_sims,
+    compute_boundary_blur_score,
+    save_overlap_scores,
+)
+from src.projection import compute_projection, save_coordinates
 from src.similarity import cosine_similarity_matrix
 from src.artifact_io import write_artifact_metadata
 from src.demo_data import generate_synthetic_embeddings, generate_synthetic_2d_coords
@@ -76,26 +84,18 @@ def load_seed(seed_path: Path) -> pd.DataFrame:
     return pd.DataFrame(valid_rows)
 
 
-def run_real_embeddings(texts: list[str]) -> np.ndarray:
+def run_embeddings(texts: list[str]) -> tuple[np.ndarray, str]:
     from src.embedding import embed_texts
-    print("  Downloading / loading all-MiniLM-L6-v2...")
-    embeddings = embed_texts(
+    return embed_texts(
         texts,
         model_name="all-MiniLM-L6-v2",
         normalize=True,
         batch_size=32,
         show_progress=True,
     )
-    return embeddings
 
 
-def run_umap_projection(embeddings: np.ndarray) -> np.ndarray:
-    from src.projection import compute_umap
-    print("  Running UMAP...")
-    return compute_umap(embeddings, n_neighbors=15, min_dist=0.1, metric="cosine", random_state=42)
-
-
-def main(use_model: bool) -> None:
+def main(synthetic: bool) -> None:
     artifacts_dir = ROOT / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
@@ -103,7 +103,7 @@ def main(use_model: bool) -> None:
     print(f"\n[1/6] Loading and validating seed data from {seed_path}")
     df = load_seed(seed_path)
     n = len(df)
-    safety_bands = df["safety_band"].tolist()
+    bands = df["safety_band"].tolist()
     texts = df["content_text"].tolist()
     ids = df["id"].tolist()
     print(f"  {n} examples loaded and validated.")
@@ -113,17 +113,17 @@ def main(use_model: bool) -> None:
     print(f"  Saved {examples_path.name}")
 
     embeddings_path = artifacts_dir / "semantic_embeddings.npy"
-    is_synthetic = not use_model
 
-    if use_model:
-        print(f"\n[2/6] Generating real embeddings with sentence-transformers")
-        embeddings = run_real_embeddings(texts)
+    if synthetic:
+        print(f"\n[2/6] Generating synthetic embeddings (--synthetic mode)")
+        embeddings = generate_synthetic_embeddings(bands)
+        model_used = "synthetic"
     else:
-        print(f"\n[2/6] Generating synthetic demo embeddings (use --use-model for real)")
-        embeddings = generate_synthetic_embeddings(safety_bands)
+        print(f"\n[2/6] Embedding content_text with sentence-transformers (TF-IDF fallback)")
+        embeddings, model_used = run_embeddings(texts)
 
     np.save(str(embeddings_path), embeddings.astype(np.float32))
-    print(f"  Embeddings shape: {embeddings.shape} -> {embeddings_path.name}")
+    print(f"  Model: {model_used}  |  Shape: {embeddings.shape} -> {embeddings_path.name}")
 
     similarity_path = artifacts_dir / "similarity_semantic.npy"
     print(f"\n[3/6] Computing cosine similarity matrix")
@@ -133,41 +133,59 @@ def main(use_model: bool) -> None:
 
     coordinates_path = artifacts_dir / "map_coordinates.csv"
     print(f"\n[4/6] Computing 2D projection")
-    if use_model:
-        coords = run_umap_projection(embeddings)
+    if synthetic:
+        coords = generate_synthetic_2d_coords(bands)
+        projection_method = "synthetic-2d"
     else:
-        coords = generate_synthetic_2d_coords(safety_bands)
+        coords, projection_method = compute_projection(
+            embeddings, n_neighbors=15, min_dist=0.1, metric="cosine", random_state=42
+        )
     save_coordinates(ids, coords, coordinates_path)
-    print(f"  Coordinates: {coords.shape} -> {coordinates_path.name}")
+    print(f"  Method: {projection_method}  |  {coords.shape} -> {coordinates_path.name}")
 
     overlap_path = artifacts_dir / "overlap_scores.csv"
-    print(f"\n[5/6] Computing overlap scores")
-    scores = compute_overlap_scores(sim, safety_bands, k=min(10, n - 1))
-    save_overlap_scores(ids, safety_bands, scores, overlap_path)
-    high_count = int((scores >= 0.6).sum())
-    print(f"  {high_count}/{n} examples flagged as high-overlap -> {overlap_path.name}")
+    print(f"\n[5/6] Computing overlap and boundary scores")
+    k = min(10, n - 1)
+    overlap_scores = compute_overlap_scores(sim, bands, k=k)
+    cross_band_sim = compute_nearest_cross_band_sim(sim, bands)
+    c_sims = compute_centroid_sims(embeddings, bands)
+    blur = compute_boundary_blur_score(c_sims)
+    high_count = int((overlap_scores >= 0.6).sum())
+    print(f"  High-overlap (>= 0.6): {high_count}/{n}")
+    print(f"  boundary_blur: mean={blur.mean():.3f}  max={blur.max():.3f}")
+    save_overlap_scores(
+        ids,
+        bands,
+        overlap_scores,
+        overlap_path,
+        nearest_cross_band_sim=cross_band_sim,
+        centroid_sims=c_sims,
+        boundary_blur_scores=blur,
+    )
+    print(f"  Saved {overlap_path.name}")
 
     print(f"\n[6/6] Writing artifact metadata")
     write_artifact_metadata(
         artifacts_dir=artifacts_dir,
         n_concepts=n,
-        embedding_model="all-MiniLM-L6-v2" if use_model else "synthetic",
+        embedding_model=model_used,
         embedding_dim=int(embeddings.shape[1]),
-        projection_method="umap" if use_model else "synthetic-2d",
-        is_synthetic=is_synthetic,
+        projection_method=projection_method,
+        is_synthetic=synthetic,
     )
     print(f"  artifact_metadata.json written.")
 
     print(f"\nAll artifacts written to {artifacts_dir}/")
+    print("Run 'python scripts/validate_artifacts.py' to verify.")
     print("Run 'streamlit run app.py' to launch the app.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--use-model",
+        "--synthetic",
         action="store_true",
-        help="Use real sentence-transformers embeddings (requires internet on first run).",
+        help="Use structured synthetic embeddings instead of sentence-transformers.",
     )
     args = parser.parse_args()
-    main(use_model=args.use_model)
+    main(synthetic=args.synthetic)

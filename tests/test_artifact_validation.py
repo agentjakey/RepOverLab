@@ -22,7 +22,10 @@ def make_artifacts(tmp_dir: Path, n: int = 5, dim: int = 16) -> None:
             "example_id": ids,
             "id": ids,
             "title": [f"Example title {i} for testing purposes" for i in range(n)],
-            "content_text": [f"Content text for example {i} with enough characters to pass validation." for i in range(n)],
+            "content_text": [
+                f"Content text for example {i} with enough characters to pass validation."
+                for i in range(n)
+            ],
             "domain": ["biology"] * n,
             "topic": [f"Topic {i}" for i in range(n)],
             "safety_band": ["benign"] * n,
@@ -43,11 +46,23 @@ def make_artifacts(tmp_dir: Path, n: int = 5, dim: int = 16) -> None:
     sim = (sim - sim.min()) / (sim.max() - sim.min() + 1e-8)
     np.save(str(tmp_dir / "similarity_semantic.npy"), sim.astype(np.float32))
 
-    coords = pd.DataFrame({"id": ids, "x": rng.uniform(-1, 1, n), "y": rng.uniform(-1, 1, n)})
+    coords = pd.DataFrame(
+        {"id": ids, "x": rng.uniform(-1, 1, n), "y": rng.uniform(-1, 1, n)}
+    )
     coords.to_csv(tmp_dir / "map_coordinates.csv", index=False)
 
     overlap = pd.DataFrame(
-        {"id": ids, "category": ["benign"] * n, "overlap_score": [0.0] * n, "is_high_overlap": [0] * n}
+        {
+            "id": ids,
+            "safety_band": ["benign"] * n,
+            "overlap_score": [0.0] * n,
+            "is_high_overlap": [0] * n,
+            "nearest_cross_band_sim": [0.0] * n,
+            "sim_to_benign": [0.8] * n,
+            "sim_to_ambiguous": [0.3] * n,
+            "sim_to_policy_relevant_sanitized": [0.2] * n,
+            "boundary_blur_score": [0.1] * n,
+        }
     )
     overlap.to_csv(tmp_dir / "overlap_scores.csv", index=False)
 
@@ -103,6 +118,27 @@ def test_similarity_shape_mismatch_raises():
         np.save(str(tmp_dir / "similarity_semantic.npy"), bad_sim)
         with pytest.raises(ValueError, match="Similarity matrix shape"):
             load_all_artifacts(tmp_dir)
+
+
+def test_merged_contains_overlap_columns():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
+        make_artifacts(tmp_dir, n=5)
+        result = load_all_artifacts(tmp_dir)
+        merged = result["merged"]
+        assert "overlap_score" in merged.columns
+        assert "is_high_overlap" in merged.columns
+
+
+def test_merged_contains_alias_columns():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
+        make_artifacts(tmp_dir, n=5)
+        result = load_all_artifacts(tmp_dir)
+        merged = result["merged"]
+        # Aliases added by _add_display_aliases
+        assert "name" in merged.columns or "title" in merged.columns
+        assert "category" in merged.columns or "safety_band" in merged.columns
 
 
 def test_write_artifact_metadata():

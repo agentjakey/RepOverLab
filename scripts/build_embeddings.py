@@ -1,19 +1,16 @@
 """
-Embed the concept descriptions using sentence-transformers.
+Embed the example content_text fields using sentence-transformers.
+Falls back to TF-IDF + TruncatedSVD if sentence-transformers cannot load.
 
 Prerequisites:
-  python scripts/build_safe_examples.py
+  python scripts/export_demo_artifacts.py   (or build_safe_examples.py)
 
 Outputs:
   artifacts/semantic_embeddings.npy  (float32, shape N x 384)
-
-This script downloads the model on first run and caches it locally.
-It is not called at app runtime. The app loads the precomputed file.
 """
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).parent.parent
@@ -28,14 +25,22 @@ def main() -> None:
 
     if not examples_path.exists():
         raise SystemExit(
-            f"{examples_path} not found. Run build_safe_examples.py first."
+            f"{examples_path} not found. Run export_demo_artifacts.py first."
         )
 
     df = pd.read_csv(examples_path)
-    texts = df["description"].tolist()
-    print(f"Embedding {len(texts)} descriptions...")
 
-    embeddings = embed_texts(
+    # Prefer content_text (new schema), fall back to description (old schema).
+    if "content_text" in df.columns:
+        texts = df["content_text"].tolist()
+        print(f"Embedding {len(texts)} content_text fields...")
+    elif "description" in df.columns:
+        texts = df["description"].tolist()
+        print(f"Embedding {len(texts)} description fields (legacy schema)...")
+    else:
+        raise SystemExit("examples CSV has neither 'content_text' nor 'description' column.")
+
+    embeddings, model_used = embed_texts(
         texts,
         model_name="all-MiniLM-L6-v2",
         normalize=True,
@@ -44,6 +49,7 @@ def main() -> None:
     )
 
     save_embeddings(embeddings, out_path)
+    print(f"Model used: {model_used}")
     print(f"Embeddings shape: {embeddings.shape}")
     print(f"Saved to {out_path}")
 
