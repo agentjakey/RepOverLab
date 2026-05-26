@@ -72,7 +72,7 @@ The .npy and .csv files in artifacts/ are committed to the repo.
 They are small enough (< 2 MB for synthetic, < 500 KB for real 95-concept embeddings)
 that this is fine for a Spaces deployment.
 
-If you regenerate artifacts with real embeddings (`--use-model`), commit the updated
+If you regenerate artifacts (with or without `--synthetic`), commit the updated
 artifact files before pushing to the Space.
 
 ### Environment variables

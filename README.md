@@ -107,11 +107,11 @@ cd representation-overlap-lab
 
 pip install -r requirements.txt
 
-# Generate demo artifacts (synthetic embeddings, no model download, ~10 seconds)
+# Generate artifacts with real embeddings (downloads ~90MB model on first run, ~60s)
 python scripts/export_demo_artifacts.py
 
-# Or generate real embeddings (downloads ~90MB model on first run)
-python scripts/export_demo_artifacts.py --use-model
+# Or use synthetic demo embeddings (no download, ~5 seconds)
+python scripts/export_demo_artifacts.py --synthetic
 
 # Run the app
 streamlit run app.py
@@ -189,14 +189,14 @@ Summary:
 
 ## Dataset
 
-The dataset in `data/safe_examples_seed.csv` contains approximately 95 concept
-descriptions across five categories:
+The dataset in `data/safe_examples_seed.csv` contains 113 concept descriptions
+across 10 domains and five safety bands:
 
-- **Clearly Benign** - Educational and everyday concepts.
-- **Dual-Use Knowledge** - Concepts with legitimate professional uses.
-- **Context-Dependent** - Classification depends on intent, which the embedding cannot read.
-- **Sensitive but Legitimate** - Uncomfortable but genuine research or clinical topics.
-- **Out-of-Scope (Abstract)** - Names types of excluded content without reproducing it.
+- **Benign** - Educational and everyday concepts.
+- **Capability-Building** - Concepts with dual-use professional applications.
+- **Ambiguous** - Classification depends on intent, which the embedding cannot read.
+- **Policy-Relevant / Sanitized** - Uncomfortable but genuine research or clinical topics.
+- **Abstract Risk Placeholder** - Names types of excluded content without reproducing it.
 
 Every entry was written and reviewed by a human. No entry provides step-by-step
 instructions for causing harm. The "out-of-scope abstract" category names types of
@@ -235,13 +235,6 @@ is in a plain CSV file and is easy to audit line by line.
 
 This project will not accept contributions that add procedural harmful content,
 regardless of the stated educational framing.
-
----
-
-## Citation
-
-If you use this project in research or education, please cite it using the
-information in `CITATION.cff`.
 
 ---
 

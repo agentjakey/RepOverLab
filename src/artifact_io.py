@@ -60,8 +60,19 @@ def load_all_artifacts(
 
     _validate_artifact_consistency(examples, embeddings, similarity, coordinates, overlap)
 
+    overlap_cols = [_KEY_COL, "overlap_score", "is_high_overlap"]
+    for _opt in [
+        "nearest_cross_band_sim",
+        "sim_to_benign",
+        "sim_to_ambiguous",
+        "sim_to_policy_relevant_sanitized",
+        "boundary_blur_score",
+    ]:
+        if _opt in overlap.columns:
+            overlap_cols.append(_opt)
+
     merged = examples.merge(coordinates, on=_KEY_COL).merge(
-        overlap[[_KEY_COL, "overlap_score", "is_high_overlap"]], on=_KEY_COL
+        overlap[overlap_cols], on=_KEY_COL
     )
 
     # Add backward-compatible display column aliases so that visualization code

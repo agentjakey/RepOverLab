@@ -2,7 +2,8 @@
 Representation Overlap Lab
 A map for thinking, not a judge.
 """
-import json
+from __future__ import annotations
+
 from pathlib import Path
 
 import pandas as pd
@@ -13,15 +14,14 @@ ARTIFACTS_DIR = ROOT / "artifacts"
 
 st.set_page_config(
     page_title="Representation Overlap Lab",
-    page_icon=str(ROOT / "assets" / "logo.svg"),
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-css_path = ROOT / "assets" / "style.css"
-if css_path.exists():
-    with open(css_path) as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+_css_path = ROOT / "assets" / "style.css"
+if _css_path.exists():
+    with open(_css_path, encoding="utf-8") as _f:
+        st.markdown(f"<style>{_f.read()}</style>", unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner="Loading artifacts...")
@@ -40,19 +40,30 @@ def load_taxonomy():
     return SafetyTaxonomy()
 
 
+REQUIRED_ARTIFACTS = [
+    "demo_examples.csv",
+    "semantic_embeddings.npy",
+    "similarity_semantic.npy",
+    "map_coordinates.csv",
+    "overlap_scores.csv",
+    "artifact_metadata.json",
+]
+
+PAGES = [
+    "Home",
+    "Overlap Map",
+    "Boundary Blur Explorer",
+    "Compare Examples",
+    "Methods",
+    "Ethics & Limitations",
+]
+
+
 def artifacts_ready() -> bool:
-    required = [
-        "demo_examples.csv",
-        "semantic_embeddings.npy",
-        "similarity_semantic.npy",
-        "map_coordinates.csv",
-        "overlap_scores.csv",
-        "artifact_metadata.json",
-    ]
-    return all((ARTIFACTS_DIR / f).exists() for f in required)
+    return all((ARTIFACTS_DIR / f).exists() for f in REQUIRED_ARTIFACTS)
 
 
-def render_not_ready():
+def show_not_ready():
     st.markdown("## Setup required")
     st.markdown(
         "The precomputed artifacts have not been generated yet. "
@@ -60,39 +71,254 @@ def render_not_ready():
     )
     st.code("python scripts/export_demo_artifacts.py", language="bash")
     st.markdown(
-        "This generates synthetic demo embeddings and takes about 10 seconds. "
-        "No model download is required. For real sentence-transformer embeddings, "
-        "pass `--use-model`."
+        "This computes embeddings and UMAP projections and takes about 60 seconds "
+        "on first run (model download included). "
+        "To skip the model and use synthetic demo embeddings, pass `--synthetic`."
     )
     st.stop()
 
 
-def render_synthetic_banner(is_synthetic: bool):
+def show_synthetic_banner(is_synthetic: bool):
     if is_synthetic:
         st.markdown(
             '<div class="synthetic-banner">'
-            "<b>Demo mode.</b> These embeddings are synthetic - geometrically structured "
-            "to show cluster relationships, but not derived from real language model "
-            "representations. Run <code>python scripts/export_demo_artifacts.py --use-model</code> "
+            "<b>Demo mode:</b> These embeddings are synthetic, not derived from a real "
+            "language model. Run <code>python scripts/export_demo_artifacts.py</code> "
             "for real semantic embeddings."
             "</div>",
             unsafe_allow_html=True,
         )
 
 
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _render_concept_card(row: pd.Series, taxonomy):
+    """Render a concept card using the new schema columns with old-name fallback."""
+    band = str(row.get("safety_band", row.get("category", "")))
+    try:
+        cat = taxonomy.category(band)
+        cat_label = cat.label
+        cat_color = cat.color
+    except (KeyError, TypeError):
+        cat_label = band
+        cat_color = "#888888"
+
+    title = str(row.get("title", row.get("name", "")))
+    topic = str(row.get("topic", row.get("short_name", "")))
+    summary = str(row.get("safe_summary", row.get("description", "")))
+
+    domain_label = ""
+    domain_raw = row.get("domain")
+    if domain_raw and pd.notna(domain_raw):
+        try:
+            domain_label = taxonomy.domain(str(domain_raw)).label
+        except KeyError:
+            domain_label = str(domain_raw).replace("_", " ")
+
+    framing_label = ""
+    framing_raw = row.get("framing", row.get("tension_type"))
+    if framing_raw and pd.notna(framing_raw):
+        try:
+            framing_label = taxonomy.tension(str(framing_raw)).label
+        except KeyError:
+            framing_label = str(framing_raw).replace("_", " ")
+
+    overlap_val = float(row.get("overlap_score", 0))
+
+    st.markdown(
+        f'<div class="concept-card">'
+        f'<div class="concept-name">{title}</div>'
+        f'<div class="category-badge" style="background:{cat_color}22;color:{cat_color};">'
+        f"{cat_label}</div><br>"
+        f'<div class="description">{summary}</div>'
+        f'<div class="tension-label">Topic: {topic}</div>'
+        f'<div class="tension-label">Domain: {domain_label}</div>'
+        f'<div class="tension-label">Framing: {framing_label}</div>'
+        f'<div class="tension-label">Overlap score: {overlap_val:.2f}</div>'
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_neighbors(neighbors, taxonomy):
+    for nb in neighbors:
+        try:
+            nb_cat = taxonomy.category(nb.safety_band)
+            nb_color = nb_cat.color
+            nb_short = nb_cat.short
+        except (KeyError, TypeError):
+            nb_color = "#888888"
+            nb_short = nb.safety_band
+
+        bar_pct = int(nb.similarity * 100)
+        marker = "" if nb.same_band else " *"
+        st.markdown(
+            f'<div class="neighbor-row">'
+            f'<div style="flex:1;">'
+            f'<span style="font-size:0.82rem;color:#1A1A1A;">{nb.topic}{marker}</span><br>'
+            f'<span style="font-size:0.72rem;color:{nb_color};">{nb_short}</span>'
+            f"</div>"
+            f'<div style="width:80px;">'
+            f'<div class="neighbor-sim-bar" style="width:{bar_pct}%;background:{nb_color};"></div>'
+            f'<span style="font-size:0.7rem;color:#7A7A7A;">{nb.similarity:.3f}</span>'
+            f"</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+    cross = [nb for nb in neighbors if not nb.same_band]
+    if cross:
+        st.markdown(
+            '<p class="caption">* from a different safety band</p>',
+            unsafe_allow_html=True,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Page: Home
+# ---------------------------------------------------------------------------
+
+def page_home(artifacts: dict):
+    from src import ethics_copy as copy
+
+    meta = artifacts["metadata"]
+    merged = artifacts["merged"]
+
+    show_synthetic_banner(meta.get("is_synthetic", False))
+
+    st.markdown("## Representation Overlap Lab")
+    st.markdown(
+        '<p class="subtitle">Why safety boundaries are not always cleanly separable.</p>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<p class="tagline">A map for thinking, not a judge.</p>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(copy.HOME_INTRO)
+
+    st.markdown(
+        '<div class="callout">' + copy.HOME_WHAT_IS_OVERLAP + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("---")
+    st.markdown("### How to use this lab")
+    st.markdown(copy.HOME_HOW_TO_USE)
+
+    st.markdown("---")
+    st.markdown(f'<p class="caption">{copy.HOME_QUICK_STATS_LABEL}</p>', unsafe_allow_html=True)
+
+    n = len(merged)
+    n_high = int((merged["overlap_score"] >= 0.6).sum())
+    n_domains = merged["domain"].nunique() if "domain" in merged.columns else "?"
+    model = meta.get("embedding_model", "unknown")
+    proj = meta.get("projection_method", "unknown").upper()
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Concepts", n)
+    c2.metric("High-overlap (>= 0.6)", n_high)
+    c3.metric("Domains", n_domains)
+    c4.metric("Projection", proj)
+
+    st.markdown(
+        f'<p class="caption">Embedding model: {model}</p>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="callout info">'
+        f"<b>{copy.HOME_JUDGE_NOTE}</b>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Page: Overlap Map
+# ---------------------------------------------------------------------------
+
 def page_map(artifacts: dict, taxonomy):
-    import sys
-    sys.path.insert(0, str(ROOT))
-    from src.plotting import build_map_figure, build_overlap_histogram
+    from src.plotting import build_map_figure, build_overlap_histogram, build_centroid_sim_bar
     from src.recommender import get_neighbors
     from src import ethics_copy as copy
 
     merged = artifacts["merged"]
     sim = artifacts["similarity"]
     examples = artifacts["examples"]
+    example_ids = examples["id"].tolist()
     meta = artifacts["metadata"]
 
-    render_synthetic_banner(meta.get("is_synthetic", True))
+    show_synthetic_banner(meta.get("is_synthetic", False))
+
+    with st.sidebar:
+        st.markdown("### Filters")
+
+        all_cats = taxonomy.all_categories()
+        selected_cats = []
+        for cat in all_cats:
+            if st.checkbox(cat.label, value=True, key=f"map_cat_{cat.key}", help=cat.description):
+                selected_cats.append(cat.key)
+
+        st.markdown("---")
+        overlap_min = st.slider(
+            "Min overlap score",
+            min_value=0.0, max_value=1.0, value=0.0, step=0.05,
+            key="map_overlap_min",
+            help="Show only concepts with overlap score >= this value.",
+        )
+        highlight_high = st.checkbox(
+            "Highlight high-overlap (>= 0.6)", value=True, key="map_highlight",
+        )
+        st.markdown("---")
+
+        framing_opts = ["all"] + [t.key for t in taxonomy.all_tensions()]
+        framing_labels = {"all": "All framings"} | {t.key: t.label for t in taxonomy.all_tensions()}
+        selected_framing = st.selectbox(
+            "Framing", options=framing_opts,
+            format_func=lambda k: framing_labels.get(k, k),
+            key="map_framing",
+        )
+
+        domain_opts = ["all"] + [d.key for d in taxonomy.all_domains()]
+        domain_labels = {"all": "All domains"} | {d.key: d.label for d in taxonomy.all_domains()}
+        selected_domain = st.selectbox(
+            "Domain", options=domain_opts,
+            format_func=lambda k: domain_labels.get(k, k),
+            key="map_domain",
+        )
+
+        symbol_by_domain = st.checkbox(
+            "Symbol by domain", value=False, key="map_sym_domain",
+            help="Use distinct marker shapes for each domain instead of each band.",
+        )
+
+        st.markdown("---")
+        st.markdown(
+            '<p class="caption">Categories are editorial. '
+            "The embedding model does not know them.</p>",
+            unsafe_allow_html=True,
+        )
+
+    # Build filtered dataframe for the plot
+    plot_df = merged.copy()
+    if selected_cats:
+        plot_df = plot_df[plot_df["safety_band"].isin(selected_cats)]
+    if selected_framing != "all" and "framing" in plot_df.columns:
+        plot_df = plot_df[plot_df["framing"] == selected_framing]
+    if selected_domain != "all" and "domain" in plot_df.columns:
+        plot_df = plot_df[plot_df["domain"] == selected_domain]
+
+    fig = build_map_figure(
+        plot_df,
+        selected_id=st.session_state.get("selected_id"),
+        highlight_high_overlap=highlight_high,
+        filter_categories=selected_cats if selected_cats else None,
+        overlap_threshold=overlap_min,
+        symbol_by_domain=symbol_by_domain,
+    )
 
     col_map, col_detail = st.columns([3, 1.2])
 
@@ -102,75 +328,6 @@ def page_map(artifacts: dict, taxonomy):
             f'<p class="caption">{copy.MAP_CAPTION}</p>',
             unsafe_allow_html=True,
         )
-
-    with st.sidebar:
-        st.markdown("### Filter")
-
-        all_cats = taxonomy.all_categories()
-        selected_cats = []
-        for cat in all_cats:
-            checked = st.checkbox(
-                cat.label,
-                value=True,
-                key=f"filter_{cat.key}",
-                help=cat.description,
-            )
-            if checked:
-                selected_cats.append(cat.key)
-
-        st.markdown("---")
-        overlap_min = st.slider(
-            "Min overlap score",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.0,
-            step=0.05,
-            help="Show only concepts with overlap score >= this value.",
-        )
-
-        highlight_high = st.checkbox(
-            "Highlight high-overlap concepts",
-            value=True,
-            help="Show concepts with overlap score >= 0.6 in a distinct marker shape.",
-        )
-
-        st.markdown("---")
-        tension_types = ["all"] + [t.key for t in taxonomy.all_tensions()]
-        tension_labels = {"all": "All tension types"} | {
-            t.key: t.label for t in taxonomy.all_tensions()
-        }
-        selected_tension = st.selectbox(
-            "Tension type",
-            options=tension_types,
-            format_func=lambda k: tension_labels.get(k, k),
-        )
-
-        st.markdown("---")
-        st.markdown(
-            '<p class="caption">'
-            "Categories are editorial - the model does not know them. "
-            "Diamonds mark high-overlap concepts."
-            "</p>",
-            unsafe_allow_html=True,
-        )
-
-    filter_df = merged.copy()
-    if selected_cats:
-        filter_df = filter_df[filter_df["category"].isin(selected_cats)]
-    if overlap_min > 0:
-        filter_df = filter_df[filter_df["overlap_score"] >= overlap_min]
-    if selected_tension != "all":
-        filter_df = filter_df[filter_df["tension_type"] == selected_tension]
-
-    fig = build_map_figure(
-        filter_df,
-        selected_id=st.session_state.get("selected_id"),
-        highlight_high_overlap=highlight_high,
-        filter_categories=selected_cats if selected_cats else None,
-        overlap_threshold=overlap_min,
-    )
-
-    with col_map:
         clicked = st.plotly_chart(
             fig,
             use_container_width=True,
@@ -178,382 +335,397 @@ def page_map(artifacts: dict, taxonomy):
             on_select="rerun",
             selection_mode="points",
         )
-
-        if clicked and clicked.get("selection") and clicked["selection"].get("points"):
+        # Extract selected point ID from Plotly click event
+        if (
+            clicked
+            and isinstance(clicked, dict)
+            and clicked.get("selection")
+            and clicked["selection"].get("points")
+        ):
             point = clicked["selection"]["points"][0]
-            curve_data = fig.data[point.get("curve_number", 0)]
-            if hasattr(curve_data, "customdata") and curve_data.customdata is not None:
-                idx = point.get("point_index", 0)
-                if idx < len(curve_data.customdata):
-                    st.session_state["selected_id"] = str(curve_data.customdata[idx])
+            curve_idx = point.get("curve_number", 0)
+            pt_idx = point.get("point_index", 0)
+            if curve_idx < len(fig.data):
+                curve = fig.data[curve_idx]
+                cd = getattr(curve, "customdata", None)
+                if cd is not None and pt_idx < len(cd):
+                    st.session_state["selected_id"] = str(cd[pt_idx])
 
     with col_detail:
         selected_id = st.session_state.get("selected_id")
 
         if selected_id and selected_id in merged["id"].values:
             row = merged[merged["id"] == selected_id].iloc[0]
-            cat_meta = taxonomy.category(row["category"])
-            tension_meta = taxonomy.tension(row["tension_type"])
 
+            _render_concept_card(row, taxonomy)
+
+            overlap_val = float(row["overlap_score"])
             st.markdown(
-                f'<div class="concept-card">'
-                f'<div class="concept-name">{row["name"]}</div>'
-                f'<div class="category-badge" style="background:{cat_meta.color}22;color:{cat_meta.color};">'
-                f"{cat_meta.label}"
-                f"</div>"
-                f'<div class="description">{row["description"]}</div>'
-                f'<div class="tension-label">Tension: {tension_meta.label}</div>'
-                f"</div>",
-                unsafe_allow_html=True,
+                f"**Overlap score:** {overlap_val:.2f}"
+                + (" (high)" if overlap_val >= 0.6 else "")
             )
+            if "boundary_blur_score" in row.index and pd.notna(row.get("boundary_blur_score")):
+                st.markdown(f"**Boundary blur:** {float(row['boundary_blur_score']):.2f}")
 
-            if row.get("legitimate_use_note"):
-                st.markdown(
-                    f'<div class="callout info">'
-                    f"<b>Legitimate use:</b> {row['legitimate_use_note']}"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
+            # Centroid similarities mini-chart
+            centroid_cols = [
+                "sim_to_benign",
+                "sim_to_ambiguous",
+                "sim_to_policy_relevant_sanitized",
+            ]
+            if any(c in row.index and pd.notna(row.get(c)) for c in centroid_cols):
+                st.markdown("**Band centroid similarities**")
+                sim_bar = build_centroid_sim_bar(row)
+                if sim_bar.data:
+                    st.plotly_chart(
+                        sim_bar, use_container_width=True,
+                        key=f"centroid_{selected_id}",
+                    )
 
-            st.markdown(
-                f"**Overlap score:** {row['overlap_score']:.2f}  "
-                f"{'(high overlap)' if row['overlap_score'] >= 0.6 else ''}"
-            )
-
+            # Nearest-neighbor tabs
             st.markdown("**Nearest neighbors**")
-            st.markdown(
-                f'<p class="caption">{copy.SIMILARITY_CAVEAT}</p>',
-                unsafe_allow_html=True,
-            )
+            tab_all, tab_cross = st.tabs(["All", "Cross-band only"])
 
-            neighbors = get_neighbors(
-                concept_id=selected_id,
-                examples_df=examples,
-                similarity_matrix=sim,
-                k=10,
-                top_n=5,
-            )
-
-            for nb in neighbors:
-                nb_cat = taxonomy.category(nb.category)
-                bar_width = int(nb.similarity * 100)
-                same_marker = "" if nb.same_category else " *"
+            with tab_all:
                 st.markdown(
-                    f'<div class="neighbor-row">'
-                    f'<div style="flex:1;">'
-                    f'<span style="font-size:0.82rem;color:#1A1A1A;">{nb.short_name}{same_marker}</span><br>'
-                    f'<span style="font-size:0.72rem;color:{nb_cat.color};">{nb_cat.short}</span>'
-                    f"</div>"
-                    f'<div style="width:80px;">'
-                    f'<div class="neighbor-sim-bar" style="width:{bar_width}%;background:{nb_cat.color};"></div>'
-                    f'<span style="font-size:0.7rem;color:#7A7A7A;">{nb.similarity:.3f}</span>'
-                    f"</div>"
-                    f"</div>",
+                    f'<p class="caption">{copy.SIMILARITY_CAVEAT}</p>',
                     unsafe_allow_html=True,
                 )
+                if selected_id in example_ids:
+                    nbrs = get_neighbors(
+                        example_id=selected_id,
+                        examples_df=examples,
+                        similarity_matrix=sim,
+                        k=10,
+                        top_n=5,
+                        cross_band_only=False,
+                    )
+                    _render_neighbors(nbrs, taxonomy)
 
-            st.markdown(
-                '<p class="caption">* different category than selected concept</p>',
-                unsafe_allow_html=True,
-            )
+            with tab_cross:
+                st.markdown(
+                    f'<p class="caption">{copy.CROSS_BAND_NOTE}</p>',
+                    unsafe_allow_html=True,
+                )
+                if selected_id in example_ids:
+                    nbrs_cross = get_neighbors(
+                        example_id=selected_id,
+                        examples_df=examples,
+                        similarity_matrix=sim,
+                        k=10,
+                        top_n=5,
+                        cross_band_only=True,
+                    )
+                    if not nbrs_cross:
+                        st.markdown(
+                            '<p class="caption">No cross-band neighbors in top-10.</p>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        _render_neighbors(nbrs_cross, taxonomy)
+
         else:
             st.markdown(
                 '<div class="callout">'
-                "<b>Click any point on the map</b> to see its description, "
-                "category, tension type, and five nearest neighbors."
+                "<b>Click any point on the map</b> to see its content, "
+                "safety band, domain, and nearest neighbors."
                 "</div>",
                 unsafe_allow_html=True,
             )
             st.markdown(
                 '<p class="caption">'
                 "Overlap score: fraction of a concept's 10 nearest neighbors "
-                "that belong to a different category."
+                "that belong to a different safety band."
                 "</p>",
                 unsafe_allow_html=True,
             )
 
-    with st.expander("Overlap score distribution by category"):
-        hist = build_overlap_histogram(merged)
-        st.plotly_chart(hist, use_container_width=True)
+    with st.expander("Overlap score distribution by band"):
+        hist_fig = build_overlap_histogram(merged)
+        st.plotly_chart(hist_fig, use_container_width=True, key="overlap_hist")
+        st.markdown(copy.OVERLAP_SCORE_EXPLAINER)
+
+
+# ---------------------------------------------------------------------------
+# Page: Boundary Blur Explorer
+# ---------------------------------------------------------------------------
+
+def page_blur(artifacts: dict, taxonomy):
+    from src.plotting import build_blur_bar, build_centroid_sim_bar
+    from src import ethics_copy as copy
+
+    merged = artifacts["merged"]
+    meta = artifacts["metadata"]
+
+    show_synthetic_banner(meta.get("is_synthetic", False))
+
+    st.markdown("## Boundary Blur Explorer")
+    st.markdown(copy.BLUR_INTRO)
+
+    if "boundary_blur_score" not in merged.columns:
         st.markdown(
-            '<p class="caption">'
-            + copy.OVERLAP_SCORE_EXPLAINER
-            + "</p>",
+            '<div class="callout warning">' + copy.BLUR_NO_DATA_MSG + "</div>",
             unsafe_allow_html=True,
         )
+        return
 
+    blur_df = merged.dropna(subset=["boundary_blur_score"]).copy()
+    topic_col = "topic" if "topic" in blur_df.columns else "short_name"
 
-def page_examples(artifacts: dict, taxonomy):
-    from src import ethics_copy as copy
-
-    meta = artifacts["metadata"]
-    render_synthetic_banner(meta.get("is_synthetic", True))
-
-    st.markdown("## Guided Examples")
-    st.markdown(
-        copy.GUIDED_EXAMPLE_INTRO,
-        unsafe_allow_html=False,
-    )
-
-    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-
-    for title, body in [
-        (copy.CASE_1_TITLE, copy.CASE_1_BODY),
-        (copy.CASE_2_TITLE, copy.CASE_2_BODY),
-        (copy.CASE_3_TITLE, copy.CASE_3_BODY),
-    ]:
-        st.markdown(f"### {title}")
-        st.markdown(body)
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-
-
-def page_data(artifacts: dict, taxonomy):
-    from src import ethics_copy as copy
-
-    meta = artifacts["metadata"]
-    examples = artifacts["examples"]
-    render_synthetic_banner(meta.get("is_synthetic", True))
-
-    st.markdown("## The Dataset")
-    st.markdown(copy.ABOUT_DATASET)
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total concepts", len(examples))
-    with col2:
-        n_dual = len(examples[examples["category"].isin(["dual_use", "context_dependent"])])
-        st.metric("Dual-use or context-dependent", n_dual)
-    with col3:
-        n_out = len(examples[examples["category"] == "out_of_scope_abstract"])
-        st.metric("Out-of-scope (abstract)", n_out)
+    # Top-30 bar chart
+    top30 = blur_df.nlargest(30, "boundary_blur_score")
+    st.markdown("### Top-30 by boundary blur score")
+    bar_fig = build_blur_bar(top30)
+    st.plotly_chart(bar_fig, use_container_width=True, key="blur_bar")
 
     st.markdown("---")
 
-    col_filter1, col_filter2 = st.columns(2)
-    with col_filter1:
-        search = st.text_input("Search concepts", placeholder="e.g. encryption, clinical, fire")
-    with col_filter2:
-        all_cat_options = ["All categories"] + sorted(examples["category"].unique().tolist())
-        cat_filter = st.selectbox("Filter by category", all_cat_options)
-
-    display_df = examples.copy()
-    if search:
-        mask = (
-            display_df["name"].str.contains(search, case=False, na=False)
-            | display_df["description"].str.contains(search, case=False, na=False)
-            | display_df["short_name"].str.contains(search, case=False, na=False)
-        )
-        display_df = display_df[mask]
-    if cat_filter != "All categories":
-        display_df = display_df[display_df["category"] == cat_filter]
-
+    # Full sortable table
+    st.markdown("### All concepts sorted by blur score")
     label_map = taxonomy.label_map()
-    display_df = display_df.copy()
-    display_df["Category"] = display_df["category"].map(label_map)
-    display_df["Tension"] = display_df["tension_type"].str.replace("_", " ")
+
+    display_cols = ["id", topic_col, "safety_band", "boundary_blur_score", "overlap_score"]
+    if "domain" in blur_df.columns:
+        display_cols.insert(3, "domain")
+
+    display = blur_df[display_cols].copy()
+    display["Band"] = display["safety_band"].map(label_map)
+    display = display.sort_values("boundary_blur_score", ascending=False)
+
+    rename = {
+        "id": "ID",
+        topic_col: "Concept",
+        "safety_band": "_drop_band",
+        "boundary_blur_score": "Blur",
+        "overlap_score": "Overlap",
+    }
+    if "domain" in display.columns:
+        rename["domain"] = "Domain"
+
+    display = display.rename(columns=rename)
+    show_cols = ["ID", "Concept", "Band", "Blur", "Overlap"]
+    if "Domain" in display.columns:
+        show_cols.insert(3, "Domain")
+    display["Blur"] = display["Blur"].round(3)
+    display["Overlap"] = display["Overlap"].round(3)
 
     st.dataframe(
-        display_df[["id", "short_name", "Category", "Tension", "description"]].rename(
-            columns={
-                "id": "ID",
-                "short_name": "Concept",
-                "description": "Description",
-            }
-        ),
+        display[show_cols],
         use_container_width=True,
         hide_index=True,
-        height=500,
+        height=400,
     )
 
-    st.markdown(
-        f'<p class="caption">Showing {len(display_df)} of {len(examples)} concepts.</p>',
-        unsafe_allow_html=True,
-    )
+    st.markdown("---")
 
-    with st.expander("Category distribution"):
-        import plotly.graph_objects as go
+    # Per-concept centroid similarity chart
+    centroid_cols = ["sim_to_benign", "sim_to_ambiguous", "sim_to_policy_relevant_sanitized"]
+    has_centroid = any(c in merged.columns for c in centroid_cols)
 
-        cat_counts = examples["category"].value_counts()
-        colors = {k: taxonomy.color_map()[k] for k in cat_counts.index if k in taxonomy.color_map()}
-        fig = go.Figure(
-            go.Bar(
-                x=[label_map.get(c, c) for c in cat_counts.index],
-                y=cat_counts.values,
-                marker_color=[colors.get(c, "#888888") for c in cat_counts.index],
-                opacity=0.85,
+    if has_centroid:
+        st.markdown("### Centroid similarities for a concept")
+        sorted_ids = blur_df.sort_values("boundary_blur_score", ascending=False)["id"].tolist()
+        id_to_label = {
+            row["id"]: row[topic_col]
+            for _, row in blur_df.iterrows()
+        }
+
+        sel_id = st.selectbox(
+            "Select a concept",
+            options=sorted_ids,
+            format_func=lambda x: id_to_label.get(x, x),
+            key="blur_concept_sel",
+        )
+
+        if sel_id:
+            sel_row = merged[merged["id"] == sel_id].iloc[0]
+            sim_fig = build_centroid_sim_bar(sel_row)
+            if sim_fig.data:
+                st.plotly_chart(sim_fig, use_container_width=True, key=f"centroid_{sel_id}")
+            blur_val = float(sel_row["boundary_blur_score"])
+            ov_val = float(sel_row["overlap_score"])
+            st.markdown(
+                f'<p class="caption">Blur: {blur_val:.3f} | Overlap: {ov_val:.3f}</p>',
+                unsafe_allow_html=True,
             )
+
+    with st.expander("How the blur score is computed"):
+        st.markdown(copy.BLUR_METHODOLOGY_NOTE)
+
+
+# ---------------------------------------------------------------------------
+# Page: Compare Examples
+# ---------------------------------------------------------------------------
+
+def page_compare(artifacts: dict, taxonomy):
+    from src import ethics_copy as copy
+
+    merged = artifacts["merged"]
+    examples = artifacts["examples"]
+    sim_matrix = artifacts["similarity"]
+    meta = artifacts["metadata"]
+
+    show_synthetic_banner(meta.get("is_synthetic", False))
+
+    st.markdown("## Compare Examples")
+    st.markdown(copy.COMPARE_INTRO)
+
+    topic_col = "topic" if "topic" in merged.columns else "short_name"
+    all_ids = examples["id"].tolist()
+    id_to_label = {
+        row["id"]: row.get(topic_col, row["id"])
+        for _, row in merged.iterrows()
+    }
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        id_a = st.selectbox(
+            "Example A",
+            options=all_ids,
+            format_func=lambda x: id_to_label.get(x, x),
+            key="compare_a",
         )
-        fig.update_layout(
-            paper_bgcolor="#FAFAF8",
-            plot_bgcolor="#FAFAF8",
-            xaxis_title="",
-            yaxis_title="Count",
-            margin=dict(l=10, r=10, t=10, b=10),
-            font=dict(size=12, family="system-ui, sans-serif"),
+    with col_b:
+        remaining = [i for i in all_ids if i != id_a]
+        default_b_idx = min(1, len(remaining) - 1)
+        id_b = st.selectbox(
+            "Example B",
+            options=remaining,
+            format_func=lambda x: id_to_label.get(x, x),
+            key="compare_b",
+            index=default_b_idx,
         )
-        st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown(
-        '<div class="callout ethics">'
-        + copy.POLICY_STATEMENT
-        + "</div>",
-        unsafe_allow_html=True,
-    )
+    if not id_a or not id_b:
+        return
+
+    idx_a = all_ids.index(id_a)
+    idx_b = all_ids.index(id_b)
+    sim_val = float(sim_matrix[idx_a, idx_b])
+
+    st.markdown("---")
+    st.metric("Cosine similarity", f"{sim_val:.4f}")
+
+    row_a = merged[merged["id"] == id_a].iloc[0]
+    row_b = merged[merged["id"] == id_b].iloc[0]
+    band_a = str(row_a.get("safety_band", row_a.get("category", "")))
+    band_b = str(row_b.get("safety_band", row_b.get("category", "")))
+
+    if band_a == band_b:
+        st.markdown(
+            f'<div class="callout info">{copy.COMPARE_SAME_BAND_NOTE}</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        note = copy.COMPARE_DIFF_BAND_NOTE.format(sim=sim_val)
+        st.markdown(
+            f'<div class="callout warning">{note}</div>',
+            unsafe_allow_html=True,
+        )
+
+    if sim_val >= 0.75:
+        interp = copy.COMPARE_HIGH_SIM_INTERP
+    elif sim_val >= 0.5:
+        interp = copy.COMPARE_MED_SIM_INTERP
+    else:
+        interp = copy.COMPARE_LOW_SIM_INTERP
+
+    st.markdown(f'<p class="caption">{interp}</p>', unsafe_allow_html=True)
+
+    st.markdown("---")
+    card_a, card_b = st.columns(2)
+    with card_a:
+        st.markdown("**Example A**")
+        _render_concept_card(row_a, taxonomy)
+    with card_b:
+        st.markdown("**Example B**")
+        _render_concept_card(row_b, taxonomy)
 
 
-def page_about(artifacts: dict):
+# ---------------------------------------------------------------------------
+# Page: Methods
+# ---------------------------------------------------------------------------
+
+def page_methods(artifacts: dict):
     from src import ethics_copy as copy
 
     meta = artifacts["metadata"]
 
-    st.markdown("## About this project")
-    st.markdown(copy.WHAT_THIS_IS)
+    st.markdown("## Methods")
+    st.markdown(copy.METHODS_INTRO)
 
-    st.markdown("---")
-    st.markdown("### What this is not")
+    st.markdown("### Dataset")
+    st.markdown(copy.METHODS_DATASET)
+
+    st.markdown("### Embedding model")
+    st.markdown(copy.METHODS_EMBEDDING)
+
+    st.markdown("### 2D projection")
+    st.markdown(copy.METHODS_PROJECTION)
+
+    st.markdown("### Overlap scoring")
+    st.markdown(copy.METHODS_OVERLAP_SCORING)
+
+    st.markdown("### Boundary blur score")
+    st.markdown(copy.METHODS_BOUNDARY_BLUR)
+
+    st.markdown("### Limitations")
     st.markdown(
-        '<div class="callout ethics">' + copy.WHAT_THIS_IS_NOT + "</div>",
+        '<div class="callout">' + copy.METHODS_LIMITATIONS + "</div>",
         unsafe_allow_html=True,
     )
 
-    st.markdown("---")
-    st.markdown("### The categories")
-    st.markdown(copy.CATEGORIES_EXPLAINER)
-
-    st.markdown("---")
-    st.markdown("### The embedding model")
-    st.markdown(copy.EMBEDDING_MODEL_NOTE)
-
-    st.markdown("---")
-    st.markdown("### The 2D projection")
-    st.markdown(copy.UMAP_CAVEAT)
-
-    st.markdown("---")
-    st.markdown("### Content policy")
-    st.markdown(
-        '<div class="callout ethics">' + copy.POLICY_STATEMENT + "</div>",
-        unsafe_allow_html=True,
-    )
-
-    st.markdown("---")
-    st.markdown("### Taxonomy disclaimer")
-    st.markdown(copy.TAXONOMY_DISCLAIMER)
-
-    st.markdown("---")
-    st.markdown("### Artifact metadata")
-    st.json(meta)
+    with st.expander("Artifact metadata"):
+        st.json(meta)
 
 
-def page_reading():
+# ---------------------------------------------------------------------------
+# Page: Ethics & Limitations
+# ---------------------------------------------------------------------------
+
+def page_ethics():
     from src import ethics_copy as copy
 
-    st.markdown("## Further Reading")
-    st.markdown(copy.READING_INTRO)
+    st.markdown("## Ethics & Limitations")
+    st.markdown(
+        '<div class="callout ethics">'
+        "<b>This is not a safety classifier. Read this page before drawing conclusions.</b>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
-    entries = [
-        {
-            "title": "Representation Engineering: A Top-Down Approach to AI Transparency",
-            "authors": "Zou et al., 2023",
-            "annotation": (
-                "Introduces representation engineering as a framework for understanding "
-                "and controlling AI behavior through linear representations. Directly relevant "
-                "to why embedding geometry matters for safety."
-            ),
-        },
-        {
-            "title": "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning",
-            "authors": "Anthropic, 2023",
-            "annotation": (
-                "Anthropic's work on sparse autoencoders and feature decomposition. "
-                "Shows that model internals are more entangled than clean feature boundaries "
-                "would suggest - the representational version of the overlap problem."
-            ),
-        },
-        {
-            "title": "Risks from Learned Optimization in Advanced Machine Learning Systems",
-            "authors": "Hubinger et al., 2019",
-            "annotation": (
-                "Classic mesa-optimization paper. The concern about deceptive alignment "
-                "connects to why surface-level similarity (including embedding similarity) "
-                "does not imply value alignment."
-            ),
-        },
-        {
-            "title": "Language Models are Few-Shot Learners (GPT-3)",
-            "authors": "Brown et al., 2020",
-            "annotation": (
-                "The paper that made the dual-use nature of language models a mainstream "
-                "concern. The capabilities that make models useful are the same ones that "
-                "make safety classification hard."
-            ),
-        },
-        {
-            "title": "Universal and Transferable Adversarial Attacks on Aligned Language Models",
-            "authors": "Zou et al., 2023",
-            "annotation": (
-                "Demonstrates that safety training can be bypassed through input perturbations "
-                "that shift the activation trajectory. Directly illustrates why representation "
-                "space boundaries are not stable."
-            ),
-        },
-        {
-            "title": "Content Moderation at Scale: The Human Side of AI Safety",
-            "authors": "Roberts, 2019 (Behind the Screen)",
-            "annotation": (
-                "Documents the human cost of content moderation work and the real-world "
-                "complexity of applying rules at scale. A necessary counterweight to purely "
-                "technical framings of the safety problem."
-            ),
-        },
-        {
-            "title": "On the Dangers of Stochastic Parrots",
-            "authors": "Bender, Gebru, McMillan-Major, Shmitchell, 2021",
-            "annotation": (
-                "Raises concerns about what large language models encode and reproduce. "
-                "Relevant to understanding what semantic embedding spaces actually contain "
-                "and whose knowledge they reflect."
-            ),
-        },
-        {
-            "title": "AI Safety and the Age of Dislocation",
-            "authors": "Paul Christiano, alignment forum posts",
-            "annotation": (
-                "Christiano's public writing on alignment strategy provides context for "
-                "why representation-level analysis matters in the longer arc of AI safety work."
-            ),
-        },
-        {
-            "title": "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks",
-            "authors": "Reimers and Gurevych, 2019",
-            "annotation": (
-                "The technical foundation for the embedding model used in this project. "
-                "Understanding how the model was trained clarifies what its neighborhoods "
-                "actually reflect."
-            ),
-        },
-        {
-            "title": "UMAP: Uniform Manifold Approximation and Projection",
-            "authors": "McInnes, Healy, Melville, 2018",
-            "annotation": (
-                "The algorithm used for 2D projection. Understanding UMAP's assumptions - "
-                "especially that it can distort global distances while preserving local "
-                "neighborhoods - is important for interpreting the map correctly."
-            ),
-        },
-    ]
+    st.markdown("### Intended uses")
+    st.markdown(copy.ETHICS_INTENDED)
 
-    for entry in entries:
-        st.markdown(
-            f'<div class="reading-entry">'
-            f'<div class="reading-title">{entry["title"]}</div>'
-            f'<div style="font-size:0.78rem;color:#7A7A7A;margin-bottom:0.2rem;">{entry["authors"]}</div>'
-            f'<div class="reading-annotation">{entry["annotation"]}</div>'
-            f"</div>",
-            unsafe_allow_html=True,
-        )
+    st.markdown("### Not intended for")
+    st.markdown(
+        '<div class="callout warning">' + copy.ETHICS_NOT_INTENDED + "</div>",
+        unsafe_allow_html=True,
+    )
 
+    st.markdown("### Content policy")
+    st.markdown(
+        '<div class="policy-box">' + copy.ETHICS_CONTENT_POLICY + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Not a classifier")
+    st.markdown(
+        '<div class="callout ethics">' + copy.ETHICS_NOT_CLASSIFIER + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Embedding space and bias")
+    st.markdown(copy.ETHICS_EMBEDDING_BIAS)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main():
+    from src import ethics_copy as copy
+
     if "selected_id" not in st.session_state:
         st.session_state["selected_id"] = None
 
@@ -572,42 +744,42 @@ def main():
 
         page = st.radio(
             "Navigate",
-            options=["The Map", "Guided Examples", "The Dataset", "About & Limitations", "Further Reading"],
+            options=PAGES,
             label_visibility="collapsed",
+            key="nav",
         )
 
         st.markdown("---")
         st.markdown(
-            '<p class="caption">'
-            "This does not decide what is allowed. "
-            "It helps show why the boundary is hard."
-            "</p>",
+            f'<p class="caption">{copy.FOOTER_NOTE}</p>',
             unsafe_allow_html=True,
         )
 
     if not artifacts_ready():
-        render_not_ready()
+        show_not_ready()
         return
 
     try:
         artifacts = load_artifacts()
         taxonomy = load_taxonomy()
-    except Exception as e:
-        st.error(f"Failed to load artifacts: {e}")
+    except Exception as exc:
+        st.error(f"Failed to load artifacts: {exc}")
         st.info("Run `python scripts/export_demo_artifacts.py` and refresh.")
         st.stop()
         return
 
-    if page == "The Map":
+    if page == "Home":
+        page_home(artifacts)
+    elif page == "Overlap Map":
         page_map(artifacts, taxonomy)
-    elif page == "Guided Examples":
-        page_examples(artifacts, taxonomy)
-    elif page == "The Dataset":
-        page_data(artifacts, taxonomy)
-    elif page == "About & Limitations":
-        page_about(artifacts)
-    elif page == "Further Reading":
-        page_reading()
+    elif page == "Boundary Blur Explorer":
+        page_blur(artifacts, taxonomy)
+    elif page == "Compare Examples":
+        page_compare(artifacts, taxonomy)
+    elif page == "Methods":
+        page_methods(artifacts)
+    elif page == "Ethics & Limitations":
+        page_ethics()
 
 
 if __name__ == "__main__":
