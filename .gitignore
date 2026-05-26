@@ -216,6 +216,32 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+.streamlit/
+
+# Secrets and environment
+.env
+.envrc
+secrets/
+*.secret
+
+# HuggingFace / sentence-transformers model cache
+.cache/
+~/.cache/huggingface/
+sentence_transformers_cache/
+models/
+
+# Large raw / temporary artifacts (keep committed demo artifacts)
+*.tmp
+*.bak
+artifacts/tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Windows-specific
+$RECYCLE.BIN/
 
 # Claude
 .claude/

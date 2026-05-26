@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: "Representation Overlap Lab: Why Safety Boundaries Are Not Always Cleanly Separable"
+message: >-
+  If you use this project in research, education, or public communication about AI safety,
+  please cite it as below.
+type: software
+authors:
+  - family-names: Ortiz
+    given-names: Jacob
+    alias: agentjakey
+    affiliation: University of California San Diego / American Refrigeration Inc.
+    orcid: ""
+repository-code: "https://github.com/agentjakey/representation-overlap-lab"
+url: "https://huggingface.co/spaces/agentjakey/representation-overlap-lab"
+abstract: >-
+  An interactive AI safety education tool that visualizes how benign, ambiguous, and
+  risk-relevant concepts overlap in semantic embedding space. The project is intended to
+  help researchers, educators, and policy-curious readers understand why safety boundaries
+  are hard to draw cleanly - not because safety systems are broken, but because the
+  underlying representational geometry does not respect the categories we want to enforce.
+  This is a map for thinking, not a judge.
+keywords:
+  - AI safety
+  - representation learning
+  - semantic embeddings
+  - interpretability
+  - AI alignment education
+  - content moderation
+license: MIT
+version: "0.1.0"
+date-released: "2026-05-26"

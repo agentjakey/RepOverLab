@@ -1,0 +1,55 @@
+colors:
+  background: "#FAFAF8"
+  sidebar_background: "#F2F0EB"
+  text_primary: "#1A1A1A"
+  text_secondary: "#4A4A4A"
+  text_muted: "#7A7A7A"
+  border: "#E0DDD8"
+  chart_background: "#FAFAF8"
+  grid: "rgba(0,0,0,0.04)"
+
+  categories:
+    clearly_benign: "#4E8098"
+    dual_use: "#9B7EBD"
+    context_dependent: "#D4A853"
+    sensitive_legitimate: "#C47C5A"
+    out_of_scope_abstract: "#7B4B44"
+
+  accent:
+    highlight: "#2C5F73"
+    warning: "#B8860B"
+    info: "#6B5A8A"
+
+typography:
+  font_sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+  font_serif: "Georgia, 'Times New Roman', Times, serif"
+  font_mono: "'Courier New', Courier, monospace"
+
+  size_xs: "0.75rem"
+  size_sm: "0.875rem"
+  size_base: "1rem"
+  size_lg: "1.125rem"
+  size_xl: "1.25rem"
+  size_2xl: "1.5rem"
+  size_3xl: "1.875rem"
+
+spacing:
+  xs: "0.25rem"
+  sm: "0.5rem"
+  md: "1rem"
+  lg: "1.5rem"
+  xl: "2rem"
+  2xl: "3rem"
+
+chart:
+  point_size: 10
+  point_opacity: 0.82
+  high_overlap_size: 13
+  high_overlap_opacity: 0.95
+  line_width: 1
+  font_family: "system-ui, sans-serif"
+  font_size: 12
+  margin_l: 20
+  margin_r: 20
+  margin_t: 40
+  margin_b: 20

@@ -1,0 +1,45 @@
+app:
+  title: "Representation Overlap Lab"
+  subtitle: "Why safety boundaries are not always cleanly separable."
+  tagline: "A map for thinking, not a judge."
+  version: "0.1.0"
+  page_icon: "assets/logo.svg"
+
+embedding:
+  model_name: "all-MiniLM-L6-v2"
+  normalize: true
+  batch_size: 32
+
+projection:
+  method: "umap"
+  n_neighbors: 15
+  min_dist: 0.1
+  metric: "cosine"
+  n_components: 2
+  random_state: 42
+
+similarity:
+  metric: "cosine"
+  top_k: 10
+
+overlap:
+  k: 10
+  high_overlap_threshold: 0.6
+
+display:
+  max_neighbors_shown: 5
+  similarity_decimal_places: 3
+  map_point_size: 10
+  map_opacity: 0.82
+
+data:
+  seed_path: "data/safe_examples_seed.csv"
+  artifacts_dir: "artifacts"
+
+artifacts:
+  embeddings_file: "semantic_embeddings.npy"
+  similarity_file: "similarity_semantic.npy"
+  coordinates_file: "map_coordinates.csv"
+  overlap_file: "overlap_scores.csv"
+  examples_file: "demo_examples.csv"
+  metadata_file: "artifact_metadata.json"

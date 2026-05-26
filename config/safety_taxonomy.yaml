@@ -1,0 +1,90 @@
+categories:
+  clearly_benign:
+    label: "Clearly Benign"
+    short: "Benign"
+    description: >-
+      Everyday educational content, professional knowledge, and creative topics with
+      no plausible path to harm. These concepts form the baseline of what a safety
+      system should never suppress.
+    color: "#4E8098"
+    marker: "circle"
+
+  dual_use:
+    label: "Dual-Use Knowledge"
+    short: "Dual-Use"
+    description: >-
+      Concepts that exist in legitimate professional, academic, or industrial contexts
+      but could theoretically support harm if applied with intent. The information itself
+      is not inherently harmful; context and intent determine the reading.
+    color: "#9B7EBD"
+    marker: "circle"
+
+  context_dependent:
+    label: "Context-Dependent"
+    short: "Context-Dep."
+    description: >-
+      Concepts whose classification as benign or harmful depends entirely on who is
+      asking, why, and in what setting. These are the hardest cases for automated systems
+      because the embedding carries no reliable intent signal.
+    color: "#D4A853"
+    marker: "diamond"
+
+  sensitive_legitimate:
+    label: "Sensitive but Legitimate"
+    short: "Sensitive / Legit."
+    description: >-
+      Topics that are genuinely uncomfortable but are subjects of serious research,
+      clinical practice, journalism, or policy work. These concepts require that safety
+      systems distinguish subject matter from intent.
+    color: "#C47C5A"
+    marker: "circle"
+
+  out_of_scope_abstract:
+    label: "Out-of-Scope (Abstract)"
+    short: "Out-of-Scope"
+    description: >-
+      This category names types of content that belong outside responsible publication.
+      Entries here describe the category abstractly - what it is and why it is excluded -
+      without reproducing procedural or operational detail. Proximity of other concepts
+      to this cluster illustrates the boundary problem.
+    color: "#7B4B44"
+    marker: "diamond"
+
+tension_types:
+  none:
+    label: "No tension"
+    description: "Concept sits clearly within a single category."
+
+  context_resolves:
+    label: "Context resolves"
+    description: >-
+      The concept is benign or harmful depending on who is asking and why.
+      The embedding carries no reliable intent signal, so context must be inferred
+      from information the embedding model cannot see.
+
+  domain_lens:
+    label: "Domain lens"
+    description: >-
+      The same factual content appears in a research paper, a safety guide, a classroom,
+      and a potential harm context - written differently, but nearby in embedding space.
+      The lens matters; the model cannot reliably read it.
+
+  protective_vs_enabling:
+    label: "Protective vs. enabling"
+    description: >-
+      Information designed to protect lives against harm lives near information that
+      could enable harm. The direction of use - toward protection or toward exploitation -
+      is not encoded in the representation.
+
+  abstraction_gap:
+    label: "Abstraction gap"
+    description: >-
+      An abstract description of a harmful category shares embedding space with legitimate
+      educational content, even when procedural specifics differ entirely.
+
+  creative_cover:
+    label: "Creative cover"
+    description: >-
+      Fiction, roleplay, or hypothetical framing frequently uses language that maps into
+      sensitive neighborhoods. The embedding model does not read genre, authorial intent,
+      or narrative distance from the described event.
