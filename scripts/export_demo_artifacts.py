@@ -26,7 +26,7 @@ import pandas as pd
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.data_schema import Category, ConceptEntry, ConceptDataset, TensionType
+from src.data_schema import SafeExample, SafetyBand, Domain, Framing
 from src.overlap import compute_overlap_scores, save_overlap_scores
 from src.projection import save_coordinates
 from src.similarity import cosine_similarity_matrix
@@ -40,23 +40,32 @@ def load_seed(seed_path: Path) -> pd.DataFrame:
     valid_rows = []
     for i, row in df.iterrows():
         try:
-            ConceptEntry(
-                id=row["id"].strip(),
-                name=row["name"].strip(),
-                short_name=row["short_name"].strip(),
-                description=row["description"].strip(),
-                category=Category(row["category"].strip()),
-                tension_type=TensionType(row["tension_type"].strip()),
-                legitimate_use_note=row.get("legitimate_use_note", "").strip(),
+            SafeExample(
+                example_id=row["example_id"].strip(),
+                title=row["title"].strip(),
+                content_text=row["content_text"].strip(),
+                domain=Domain(row["domain"].strip()),
+                topic=row["topic"].strip(),
+                safety_band=SafetyBand(row["safety_band"].strip()),
+                framing=Framing(row["framing"].strip()),
+                safe_summary=row["safe_summary"].strip(),
+                why_interesting=row["why_interesting"].strip(),
+                allowed_for_demo=row["allowed_for_demo"].strip().lower() in ("true", "1", "yes"),
+                notes=row.get("notes", "").strip(),
             )
             valid_rows.append({
-                "id": row["id"].strip(),
-                "name": row["name"].strip(),
-                "short_name": row["short_name"].strip(),
-                "description": row["description"].strip(),
-                "category": row["category"].strip(),
-                "tension_type": row["tension_type"].strip(),
-                "legitimate_use_note": row.get("legitimate_use_note", "").strip(),
+                "example_id": row["example_id"].strip(),
+                "id": row["example_id"].strip(),
+                "title": row["title"].strip(),
+                "content_text": row["content_text"].strip(),
+                "domain": row["domain"].strip(),
+                "topic": row["topic"].strip(),
+                "safety_band": row["safety_band"].strip(),
+                "framing": row["framing"].strip(),
+                "safe_summary": row["safe_summary"].strip(),
+                "why_interesting": row["why_interesting"].strip(),
+                "allowed_for_demo": row["allowed_for_demo"].strip().lower() in ("true", "1", "yes"),
+                "notes": row.get("notes", "").strip(),
             })
         except Exception as e:
             errors.append(f"Row {i}: {e}")
@@ -67,11 +76,11 @@ def load_seed(seed_path: Path) -> pd.DataFrame:
     return pd.DataFrame(valid_rows)
 
 
-def run_real_embeddings(descriptions: list[str]) -> np.ndarray:
+def run_real_embeddings(texts: list[str]) -> np.ndarray:
     from src.embedding import embed_texts
     print("  Downloading / loading all-MiniLM-L6-v2...")
     embeddings = embed_texts(
-        descriptions,
+        texts,
         model_name="all-MiniLM-L6-v2",
         normalize=True,
         batch_size=32,
@@ -94,10 +103,10 @@ def main(use_model: bool) -> None:
     print(f"\n[1/6] Loading and validating seed data from {seed_path}")
     df = load_seed(seed_path)
     n = len(df)
-    categories = df["category"].tolist()
-    descriptions = df["description"].tolist()
+    safety_bands = df["safety_band"].tolist()
+    texts = df["content_text"].tolist()
     ids = df["id"].tolist()
-    print(f"  {n} concepts loaded and validated.")
+    print(f"  {n} examples loaded and validated.")
 
     examples_path = artifacts_dir / "demo_examples.csv"
     df.to_csv(examples_path, index=False)
@@ -108,10 +117,10 @@ def main(use_model: bool) -> None:
 
     if use_model:
         print(f"\n[2/6] Generating real embeddings with sentence-transformers")
-        embeddings = run_real_embeddings(descriptions)
+        embeddings = run_real_embeddings(texts)
     else:
         print(f"\n[2/6] Generating synthetic demo embeddings (use --use-model for real)")
-        embeddings = generate_synthetic_embeddings(categories)
+        embeddings = generate_synthetic_embeddings(safety_bands)
 
     np.save(str(embeddings_path), embeddings.astype(np.float32))
     print(f"  Embeddings shape: {embeddings.shape} -> {embeddings_path.name}")
@@ -127,16 +136,16 @@ def main(use_model: bool) -> None:
     if use_model:
         coords = run_umap_projection(embeddings)
     else:
-        coords = generate_synthetic_2d_coords(categories)
+        coords = generate_synthetic_2d_coords(safety_bands)
     save_coordinates(ids, coords, coordinates_path)
     print(f"  Coordinates: {coords.shape} -> {coordinates_path.name}")
 
     overlap_path = artifacts_dir / "overlap_scores.csv"
     print(f"\n[5/6] Computing overlap scores")
-    scores = compute_overlap_scores(sim, categories, k=min(10, n - 1))
-    save_overlap_scores(ids, categories, scores, overlap_path)
+    scores = compute_overlap_scores(sim, safety_bands, k=min(10, n - 1))
+    save_overlap_scores(ids, safety_bands, scores, overlap_path)
     high_count = int((scores >= 0.6).sum())
-    print(f"  {high_count}/{n} concepts flagged as high-overlap -> {overlap_path.name}")
+    print(f"  {high_count}/{n} examples flagged as high-overlap -> {overlap_path.name}")
 
     print(f"\n[6/6] Writing artifact metadata")
     write_artifact_metadata(

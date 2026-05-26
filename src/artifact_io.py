@@ -9,14 +9,24 @@ import numpy as np
 import pandas as pd
 
 
+# Canonical column name for the row key in all artifact files.
+# The examples CSV may carry both "example_id" and "id"; all coordinate and
+# overlap files use "id".  Backward-compat aliases are added on load.
+_KEY_COL = "id"
+
+
 def load_all_artifacts(
     artifacts_dir: Path,
     config: Optional[dict] = None,
 ) -> dict:
     """
     Load all precomputed artifacts from disk.
-    Returns a dict with keys: examples, embeddings, similarity, coordinates, overlap, metadata.
+
+    Returns a dict with keys:
+        examples, embeddings, similarity, coordinates, overlap, merged, metadata.
+
     Raises FileNotFoundError with a clear message if any required file is missing.
+    Raises ValueError if artifacts are internally inconsistent.
     """
     if config is None:
         config = {
@@ -45,11 +55,18 @@ def load_all_artifacts(
     with open(_require(config["metadata_file"]), encoding="utf-8") as f:
         metadata = json.load(f)
 
+    # Ensure examples has an "id" column for merging (new schema uses example_id).
+    examples = _normalize_examples(examples)
+
     _validate_artifact_consistency(examples, embeddings, similarity, coordinates, overlap)
 
-    merged = examples.merge(coordinates, on="id").merge(
-        overlap[["id", "overlap_score", "is_high_overlap"]], on="id"
+    merged = examples.merge(coordinates, on=_KEY_COL).merge(
+        overlap[[_KEY_COL, "overlap_score", "is_high_overlap"]], on=_KEY_COL
     )
+
+    # Add backward-compatible display column aliases so that visualization code
+    # written against the old schema continues to work without modification.
+    merged = _add_display_aliases(merged)
 
     return {
         "examples": examples,
@@ -60,6 +77,39 @@ def load_all_artifacts(
         "merged": merged,
         "metadata": metadata,
     }
+
+
+def _normalize_examples(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure the examples DataFrame has an 'id' column for merging."""
+    df = df.copy()
+    if "id" not in df.columns:
+        if "example_id" in df.columns:
+            df["id"] = df["example_id"]
+        else:
+            raise ValueError(
+                "examples CSV must have either an 'id' or 'example_id' column."
+            )
+    return df
+
+
+def _add_display_aliases(merged: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add aliased columns so visualization code using old column names still works.
+    New column -> old alias added if the alias does not already exist.
+    """
+    merged = merged.copy()
+    alias_map = {
+        "example_id": "id",
+        "title": "name",
+        "topic": "short_name",
+        "safety_band": "category",
+        "framing": "tension_type",
+        "content_text": "description",
+    }
+    for new_col, old_col in alias_map.items():
+        if new_col in merged.columns and old_col not in merged.columns:
+            merged[old_col] = merged[new_col]
+    return merged
 
 
 def _validate_artifact_consistency(

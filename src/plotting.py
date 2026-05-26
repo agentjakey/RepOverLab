@@ -12,21 +12,38 @@ TAXONOMY = SafetyTaxonomy()
 COLOR_MAP = TAXONOMY.color_map()
 LABEL_MAP = TAXONOMY.label_map()
 
+# Ordered list of safety_band keys - determines legend order and iteration.
 CATEGORY_ORDER = [
-    "clearly_benign",
-    "dual_use",
-    "context_dependent",
-    "sensitive_legitimate",
-    "out_of_scope_abstract",
+    "benign",
+    "capability_building",
+    "ambiguous",
+    "policy_relevant_sanitized",
+    "abstract_risk_placeholder",
 ]
 
 MARKER_SYMBOL_MAP = {
-    "clearly_benign": "circle",
-    "dual_use": "circle",
-    "context_dependent": "diamond",
-    "sensitive_legitimate": "circle",
-    "out_of_scope_abstract": "diamond",
+    "benign": "circle",
+    "capability_building": "circle",
+    "ambiguous": "diamond",
+    "policy_relevant_sanitized": "circle",
+    "abstract_risk_placeholder": "diamond",
 }
+
+# Display column - prefer the new safety_band column; fall back to legacy 'category'.
+def _cat_col(df: pd.DataFrame) -> str:
+    return "safety_band" if "safety_band" in df.columns else "category"
+
+def _id_col(df: pd.DataFrame) -> str:
+    return "example_id" if "example_id" in df.columns else "id"
+
+def _label_col(df: pd.DataFrame) -> str:
+    return "title" if "title" in df.columns else "name"
+
+def _short_col(df: pd.DataFrame) -> str:
+    return "topic" if "topic" in df.columns else "short_name"
+
+def _framing_col(df: pd.DataFrame) -> str:
+    return "framing" if "framing" in df.columns else "tension_type"
 
 
 def build_map_figure(
@@ -38,10 +55,17 @@ def build_map_figure(
 ) -> go.Figure:
     """
     Build the main 2D concept map scatter figure.
-    df must contain: id, name, short_name, category, tension_type, x, y, overlap_score.
+    df must contain: id/example_id, title/name, topic/short_name,
+    safety_band/category, framing/tension_type, x, y, overlap_score.
     """
+    cat_col = _cat_col(df)
+    id_col = _id_col(df)
+    label_col = _label_col(df)
+    short_col = _short_col(df)
+    framing_col = _framing_col(df)
+
     if filter_categories:
-        plot_df = df[df["category"].isin(filter_categories)].copy()
+        plot_df = df[df[cat_col].isin(filter_categories)].copy()
     else:
         plot_df = df.copy()
 
@@ -51,7 +75,7 @@ def build_map_figure(
     fig = go.Figure()
 
     for cat in CATEGORY_ORDER:
-        cat_df = plot_df[plot_df["category"] == cat]
+        cat_df = plot_df[plot_df[cat_col] == cat]
         if cat_df.empty:
             continue
 
@@ -64,21 +88,21 @@ def build_map_figure(
 
             size = 13 if (high and highlight_high_overlap) else 10
             opacity = 0.95 if (high and highlight_high_overlap) else 0.82
-            symbol = "diamond" if high and highlight_high_overlap else MARKER_SYMBOL_MAP[cat]
+            symbol = "diamond" if high and highlight_high_overlap else MARKER_SYMBOL_MAP.get(cat, "circle")
             line_width = 1.5 if high and highlight_high_overlap else 0.8
             line_color = "#1A1A1A" if high and highlight_high_overlap else "rgba(0,0,0,0.3)"
 
             hover_text = [
                 (
-                    f"<b>{row['short_name']}</b><br>"
-                    f"Category: {LABEL_MAP.get(row['category'], row['category'])}<br>"
-                    f"Tension: {row['tension_type'].replace('_', ' ')}<br>"
+                    f"<b>{row[short_col]}</b><br>"
+                    f"Band: {LABEL_MAP.get(row[cat_col], row[cat_col])}<br>"
+                    f"Framing: {row[framing_col].replace('_', ' ')}<br>"
                     f"Overlap score: {row['overlap_score']:.2f}"
                 )
                 for _, row in subset.iterrows()
             ]
 
-            is_selected = (subset["id"] == selected_id) if selected_id else [False] * len(subset)
+            is_selected = (subset[id_col] == selected_id) if selected_id else pd.Series([False] * len(subset), index=subset.index)
 
             fig.add_trace(
                 go.Scatter(
@@ -89,7 +113,7 @@ def build_map_figure(
                     legendgroup=cat,
                     showlegend=(not high),
                     marker=dict(
-                        color=COLOR_MAP[cat],
+                        color=COLOR_MAP.get(cat, "#888888"),
                         size=[15 if sel else size for sel in is_selected],
                         opacity=[1.0 if sel else opacity for sel in is_selected],
                         symbol=symbol,
@@ -100,7 +124,7 @@ def build_map_figure(
                     ),
                     text=hover_text,
                     hovertemplate="%{text}<extra></extra>",
-                    customdata=subset["id"].values,
+                    customdata=subset[id_col].values,
                 )
             )
 
@@ -198,20 +222,21 @@ def build_affinity_heatmap(affinity_df: pd.DataFrame) -> go.Figure:
 
 def build_overlap_histogram(df: pd.DataFrame) -> go.Figure:
     """
-    Histogram of overlap scores by category.
-    df must have: category, overlap_score.
+    Histogram of overlap scores by safety band / category.
     """
+    cat_col = _cat_col(df)
+
     fig = go.Figure()
 
     for cat in CATEGORY_ORDER:
-        cat_df = df[df["category"] == cat]
+        cat_df = df[df[cat_col] == cat]
         if cat_df.empty:
             continue
         fig.add_trace(
             go.Histogram(
                 x=cat_df["overlap_score"],
                 name=LABEL_MAP.get(cat, cat),
-                marker_color=COLOR_MAP[cat],
+                marker_color=COLOR_MAP.get(cat, "#888888"),
                 opacity=0.75,
                 xbins=dict(start=0, end=1, size=0.1),
             )

@@ -15,17 +15,22 @@ from src.artifact_io import load_all_artifacts, write_artifact_metadata
 
 
 def make_artifacts(tmp_dir: Path, n: int = 5, dim: int = 16) -> None:
-    ids = [f"CB{i:03d}" for i in range(1, n + 1)]
+    ids = [f"BL{i:03d}" for i in range(1, n + 1)]
 
     examples = pd.DataFrame(
         {
+            "example_id": ids,
             "id": ids,
-            "name": [f"Concept {i}" for i in range(n)],
-            "short_name": [f"Concept {i}" for i in range(n)],
-            "description": [f"Description of concept {i} with enough text." for i in range(n)],
-            "category": ["clearly_benign"] * n,
-            "tension_type": ["none"] * n,
-            "legitimate_use_note": [""] * n,
+            "title": [f"Example title {i} for testing purposes" for i in range(n)],
+            "content_text": [f"Content text for example {i} with enough characters to pass validation." for i in range(n)],
+            "domain": ["biology"] * n,
+            "topic": [f"Topic {i}" for i in range(n)],
+            "safety_band": ["benign"] * n,
+            "framing": ["educational"] * n,
+            "safe_summary": [f"Safe summary for example {i}." for i in range(n)],
+            "why_interesting": [f"Why example {i} is interesting for the demo." for i in range(n)],
+            "allowed_for_demo": [True] * n,
+            "notes": [""] * n,
         }
     )
     examples.to_csv(tmp_dir / "demo_examples.csv", index=False)
@@ -42,7 +47,7 @@ def make_artifacts(tmp_dir: Path, n: int = 5, dim: int = 16) -> None:
     coords.to_csv(tmp_dir / "map_coordinates.csv", index=False)
 
     overlap = pd.DataFrame(
-        {"id": ids, "category": ["clearly_benign"] * n, "overlap_score": [0.0] * n, "is_high_overlap": [0] * n}
+        {"id": ids, "category": ["benign"] * n, "overlap_score": [0.0] * n, "is_high_overlap": [0] * n}
     )
     overlap.to_csv(tmp_dir / "overlap_scores.csv", index=False)
 

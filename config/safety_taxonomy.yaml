@@ -1,90 +1,175 @@
-categories:
-  clearly_benign:
-    label: "Clearly Benign"
+safety_bands:
+  benign:
+    label: "Benign"
     short: "Benign"
     description: >-
-      Everyday educational content, professional knowledge, and creative topics with
-      no plausible path to harm. These concepts form the baseline of what a safety
-      system should never suppress.
+      Educational content, professional knowledge, and general information with
+      no meaningful path to harm. These examples represent what safety systems
+      should never suppress - the baseline of legitimate discourse.
     color: "#4E8098"
     marker: "circle"
 
-  dual_use:
-    label: "Dual-Use Knowledge"
-    short: "Dual-Use"
+  capability_building:
+    label: "Capability-Building"
+    short: "Cap.-Building"
     description: >-
-      Concepts that exist in legitimate professional, academic, or industrial contexts
-      but could theoretically support harm if applied with intent. The information itself
-      is not inherently harmful; context and intent determine the reading.
+      Technical or specialized knowledge with clear, primary legitimate uses in
+      professional, academic, or educational contexts. The information is factual
+      and grounded; the concern arises only with deliberate misapplication, not
+      from the information itself.
     color: "#9B7EBD"
     marker: "circle"
 
-  context_dependent:
-    label: "Context-Dependent"
-    short: "Context-Dep."
+  ambiguous:
+    label: "Ambiguous"
+    short: "Ambiguous"
     description: >-
-      Concepts whose classification as benign or harmful depends entirely on who is
-      asking, why, and in what setting. These are the hardest cases for automated systems
-      because the embedding carries no reliable intent signal.
+      Genuinely uncertain cases where classification depends on intent, context,
+      and audience in ways the embedding model cannot distinguish. These examples
+      sit at real category boundaries and illustrate why rule-based filtering
+      produces both false positives and false negatives.
     color: "#D4A853"
     marker: "diamond"
 
-  sensitive_legitimate:
-    label: "Sensitive but Legitimate"
-    short: "Sensitive / Legit."
+  policy_relevant_sanitized:
+    label: "Policy-Relevant (Sanitized)"
+    short: "Policy/Sanitized"
     description: >-
-      Topics that are genuinely uncomfortable but are subjects of serious research,
-      clinical practice, journalism, or policy work. These concepts require that safety
-      systems distinguish subject matter from intent.
+      Sensitive topics presented in a policy, research, or analytical framing
+      without operational detail. These examples are the kind of text that
+      appears in academic papers, congressional testimony, and investigative
+      journalism - necessary for informed governance, but sitting in semantic
+      proximity to more directly risky content.
     color: "#C47C5A"
     marker: "circle"
 
-  out_of_scope_abstract:
-    label: "Out-of-Scope (Abstract)"
-    short: "Out-of-Scope"
+  abstract_risk_placeholder:
+    label: "Abstract Risk Placeholder"
+    short: "Abstract Risk"
     description: >-
-      This category names types of content that belong outside responsible publication.
-      Entries here describe the category abstractly - what it is and why it is excluded -
-      without reproducing procedural or operational detail. Proximity of other concepts
-      to this cluster illustrates the boundary problem.
+      Named references to categories of disallowed content, written at the
+      level of abstraction - what the category is and why it is excluded -
+      without any operational detail. These entries exist in the dataset to show
+      that restricted content clusters exist and that legitimate content sits
+      near them, making over-restriction a predictable failure mode.
     color: "#7B4B44"
     marker: "diamond"
 
-tension_types:
-  none:
-    label: "No tension"
-    description: "Concept sits clearly within a single category."
-
-  context_resolves:
-    label: "Context resolves"
+domains:
+  biology:
+    label: "Biology"
     description: >-
-      The concept is benign or harmful depending on who is asking and why.
-      The embedding carries no reliable intent signal, so context must be inferred
-      from information the embedding model cannot see.
+      Life sciences: genetics, virology, cell biology, ecology, and related
+      research. Biology education borders biosecurity governance at multiple
+      points - the dual-use concern in biology is among the most serious in
+      any scientific domain.
 
-  domain_lens:
-    label: "Domain lens"
+  cybersecurity:
+    label: "Cybersecurity"
     description: >-
-      The same factual content appears in a research paper, a safety guide, a classroom,
-      and a potential harm context - written differently, but nearby in embedding space.
-      The lens matters; the model cannot reliably read it.
+      Computer security, network defense, vulnerability research, and digital
+      forensics. Cybersecurity is structurally dual-use: defensive understanding
+      and offensive capability require the same underlying knowledge.
 
-  protective_vs_enabling:
-    label: "Protective vs. enabling"
+  persuasion:
+    label: "Persuasion"
     description: >-
-      Information designed to protect lives against harm lives near information that
-      could enable harm. The direction of use - toward protection or toward exploitation -
-      is not encoded in the representation.
+      The psychology of influence, communication, and belief change. Persuasion
+      research is foundational to advertising, public health, and political
+      communication - and the same knowledge underlies manipulation and
+      disinformation.
 
-  abstraction_gap:
-    label: "Abstraction gap"
+  physics:
+    label: "Physics"
     description: >-
-      An abstract description of a harmful category shares embedding space with legitimate
-      educational content, even when procedural specifics differ entirely.
+      Physical sciences including nuclear, quantum, and electromagnetic phenomena.
+      Physics education touches on dual-use concerns primarily in nuclear and
+      radiological domains, and in energy and weapons policy.
 
-  creative_cover:
-    label: "Creative cover"
+  AI_agents:
+    label: "AI Agents"
     description: >-
-      Fiction, roleplay, or hypothetical framing frequently uses language that maps into
-      sensitive neighborhoods. The embedding model does not read genre, authorial intent,
-      or narrative distance from the described event.
+      Machine learning systems, language models, autonomous agents, and AI
+      safety research. AI capability development and AI misuse potential are
+      difficult to disentangle at the technical level.
+
+  governance:
+    label: "Governance"
+    description: >-
+      Policy frameworks, regulatory systems, international agreements, and
+      institutional mechanisms for managing risk. Governance analysis sits
+      near evasion analysis in representation space.
+
+  education:
+    label: "Education"
+    description: >-
+      Learning, curriculum design, media literacy, and the pedagogy of sensitive
+      topics. Education about harmful content is necessary for prevention, but
+      shares vocabulary with the content itself.
+
+  medicine:
+    label: "Medicine"
+    description: >-
+      Clinical medicine, pharmacology, psychiatry, and public health. Medical
+      education includes content about drug toxicity, self-harm assessment, and
+      clinical risk - all of which border safety-sensitive territory.
+
+  climate:
+    label: "Climate"
+    description: >-
+      Climate science, energy policy, infrastructure resilience, and environmental
+      governance. Climate discussion intersects with critical infrastructure risk,
+      geopolitical instability, and contested policy.
+
+  law_policy:
+    label: "Law & Policy"
+    description: >-
+      Legal systems, regulatory frameworks, surveillance law, and criminal justice.
+      Legal analysis necessarily discusses the structure of prohibited conduct in
+      order to define and enforce it.
+
+framings:
+  educational:
+    label: "Educational"
+    description: >-
+      Content oriented toward explaining or teaching a concept. The primary
+      purpose is comprehension, not operational guidance.
+
+  technical:
+    label: "Technical"
+    description: >-
+      Content that describes mechanisms, systems, or processes in technical detail.
+      Technical framing is common in both legitimate research and in content that
+      enables harm.
+
+  casual:
+    label: "Casual"
+    description: >-
+      Conversational or informal language, as one might use in everyday communication.
+      Casual framing often lacks the institutional context that signals legitimate use.
+
+  fictional:
+    label: "Fictional"
+    description: >-
+      Content presented as part of a story, hypothetical, or creative scenario.
+      Fictional framing does not change the semantic neighborhood of the content.
+
+  policy:
+    label: "Policy"
+    description: >-
+      Content oriented toward governance, regulation, or institutional decision-making.
+      Policy framing indicates analytical rather than operational intent, but shares
+      vocabulary with the analysis of what is being governed.
+
+  reflective:
+    label: "Reflective"
+    description: >-
+      Content that examines the implications, tensions, or second-order effects of
+      a topic rather than describing the topic itself. Reflective framing is common
+      in academic and philosophical contexts.
+
+  abstract_placeholder:
+    label: "Abstract Placeholder"
+    description: >-
+      Content that names a disallowed category without providing operational detail.
+      This framing is used exclusively for abstract_risk_placeholder entries.

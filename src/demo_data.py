@@ -4,10 +4,10 @@ Synthetic demo artifact generation.
 When the real embedding pipeline has not been run (no sentence-transformers model
 downloaded), this module generates structured synthetic embeddings that preserve
 the geometric properties needed to demonstrate the overlap problem:
-- Concepts within a category cluster together
-- Categories partially overlap with neighbors
-- The out-of-scope category is proximate to, but not identical to, sensitive_legitimate
-- Some context_dependent concepts span multiple clusters
+- Concepts within a safety band cluster together
+- Bands partially overlap with their neighbors
+- abstract_risk_placeholder is proximate to policy_relevant_sanitized
+- Some ambiguous examples span multiple clusters
 
 These synthetic embeddings are NOT semantic embeddings. They are designed for
 demonstration and visual clarity, not for research conclusions. The app labels
@@ -16,15 +16,14 @@ synthetic artifacts clearly so users know what they are looking at.
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 
 
 CATEGORY_CENTERS = {
-    "clearly_benign": np.array([2.0, 0.0]),
-    "dual_use": np.array([1.0, 1.5]),
-    "context_dependent": np.array([0.0, 1.0]),
-    "sensitive_legitimate": np.array([-1.0, 1.2]),
-    "out_of_scope_abstract": np.array([-1.8, 0.3]),
+    "benign": np.array([2.0, 0.0]),
+    "capability_building": np.array([1.0, 1.5]),
+    "ambiguous": np.array([0.0, 1.0]),
+    "policy_relevant_sanitized": np.array([-1.0, 1.2]),
+    "abstract_risk_placeholder": np.array([-1.8, 0.3]),
 }
 
 WITHIN_CATEGORY_STD = 0.45
@@ -46,13 +45,13 @@ def generate_synthetic_embeddings(categories: list[str]) -> np.ndarray:
     projection_matrix = rng.normal(0, 1 / np.sqrt(EMBEDDING_DIM), (2, EMBEDDING_DIM))
 
     embeddings = []
-    for i, cat in enumerate(categories):
-        center_2d = CATEGORY_CENTERS[cat]
+    for cat in categories:
+        center_2d = CATEGORY_CENTERS.get(cat, np.array([0.0, 0.0]))
 
         neighbors = _get_neighbor_categories(cat)
         if neighbors and rng.random() < BOUNDARY_BLEND_FRACTION:
             neighbor_cat = rng.choice(neighbors)
-            neighbor_center = CATEGORY_CENTERS[neighbor_cat]
+            neighbor_center = CATEGORY_CENTERS.get(neighbor_cat, np.array([0.0, 0.0]))
             blend = rng.uniform(0.3, 0.6)
             center_2d = (1 - blend) * center_2d + blend * neighbor_center
 
@@ -70,11 +69,11 @@ def generate_synthetic_embeddings(categories: list[str]) -> np.ndarray:
 
 def _get_neighbor_categories(cat: str) -> list[str]:
     adjacency = {
-        "clearly_benign": ["dual_use"],
-        "dual_use": ["clearly_benign", "context_dependent"],
-        "context_dependent": ["dual_use", "sensitive_legitimate"],
-        "sensitive_legitimate": ["context_dependent", "out_of_scope_abstract"],
-        "out_of_scope_abstract": ["sensitive_legitimate"],
+        "benign": ["capability_building"],
+        "capability_building": ["benign", "ambiguous"],
+        "ambiguous": ["capability_building", "policy_relevant_sanitized"],
+        "policy_relevant_sanitized": ["ambiguous", "abstract_risk_placeholder"],
+        "abstract_risk_placeholder": ["policy_relevant_sanitized"],
     }
     return adjacency.get(cat, [])
 
@@ -84,7 +83,7 @@ def generate_synthetic_2d_coords(categories: list[str]) -> np.ndarray:
     rng = np.random.default_rng(RANDOM_STATE)
     coords = []
     for cat in categories:
-        center = CATEGORY_CENTERS[cat]
+        center = CATEGORY_CENTERS.get(cat, np.array([0.0, 0.0]))
         noise = rng.normal(0, WITHIN_CATEGORY_STD, 2)
         coords.append(center + noise)
     return np.array(coords, dtype=np.float32)
