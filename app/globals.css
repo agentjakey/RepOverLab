@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #F8F6F1;
+  --surface: #FFFFFF;
+  --surface-muted: #F2EFE9;
+  --text: #1C1917;
+  --muted: #57534E;
+  --border: #E2DDD6;
+  --accent: #B91C1C;
+  --accent-soft: #FEF2F2;
+  --blue-soft: #EFF6FF;
+  --amber-soft: #FFFBEB;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Section anchors sit below fixed nav */
+section[id] {
+  scroll-margin-top: 64px;
+}
+
+/* Reading-width prose column */
+.prose-col {
+  max-width: 68ch;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Full-width lab panel */
+.lab-col {
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Section number prefix */
+.section-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Band color pills */
+.band-benign          { background: #DBEAFE; color: #1E40AF; border: 1px solid #BFDBFE; }
+.band-capability      { background: #EDE9FE; color: #5B21B6; border: 1px solid #DDD6FE; }
+.band-ambiguous       { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+.band-policy          { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
+.band-abstract        { background: #F3F4F6; color: #374151; border: 1px solid #D1D5DB; }
+
+/* Framing pills */
+.framing-pill {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Care note box */
+.care-note {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  color: #7F1D1D;
+  padding: 0.875rem 1.125rem;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Tooltip */
+.map-tooltip {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  color: var(--text);
+  font-size: 0.875rem;
+  pointer-events: none;
+  max-width: 260px;
+}

@@ -1,7 +1,8 @@
 # artifacts/
 
-This directory contains precomputed files used by the Streamlit app at runtime.
-The app loads these files directly and performs no embedding or model inference.
+This directory contains precomputed Python pipeline outputs.
+The Next.js app reads from `public/data/` (JSON exports). Run `scripts/export_to_public.py`
+to export these artifacts to the web app data directory.
 
 ## Files
 
@@ -22,11 +23,11 @@ Run this command from the project root to generate all artifacts at once:
 
 By default, this uses synthetic embeddings (no model download, runs immediately).
 
-To use real sentence-transformer embeddings:
+To use synthetic embeddings (no model download):
 
-    python scripts/export_demo_artifacts.py --use-model
+    python scripts/export_demo_artifacts.py --synthetic
 
-This requires an internet connection on the first run and downloads approximately 90 MB.
+The default runs real sentence-transformer embeddings and downloads approximately 90 MB on first run.
 
 ## Validating artifacts
 
