@@ -67,7 +67,7 @@ function SimBar({ value }: { value: number }) {
 export default function OverlapMap({ examples, neighbors }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; flip: boolean } | null>(null);
   const [activeBands, setActiveBands] = useState<Set<SafetyBand>>(new Set(ALL_BANDS));
   const [showOnlyHighOverlap, setShowOnlyHighOverlap] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -117,6 +117,7 @@ export default function OverlapMap({ examples, neighbors }: Props) {
         setTooltip({
           x: svgX * scaleX,
           y: svgY * scaleY,
+          flip: svgX * scaleX > rect.width * 0.65,
         });
       }
     },
@@ -227,10 +228,7 @@ export default function OverlapMap({ examples, neighbors }: Props) {
                 style={{
                   left: tooltip.x + 14,
                   top: tooltip.y - 30,
-                  transform:
-                    tooltip.x > svgRef.current!.getBoundingClientRect().width * 0.65
-                      ? "translateX(-105%)"
-                      : "none",
+                  transform: tooltip.flip ? "translateX(-105%)" : "none",
                 }}
               >
                 <BandPill band={hoveredEx.safety_band} />

@@ -227,6 +227,8 @@ node_modules/
 
 # Secrets and environment
 .env
+.env.*
+.env.local
 .envrc
 secrets/
 *.secret
