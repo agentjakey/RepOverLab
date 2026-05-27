@@ -1,10 +1,23 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Sora, Lora, DM_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const sora = Sora({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-sora",
+  display: "swap",
+});
+
+const lora = Lora({
+  subsets: ["latin"],
+  variable: "--font-lora",
+  display: "swap",
+});
+
+const dmMono = DM_Mono({
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  variable: "--font-dm-mono",
   display: "swap",
 });
 
@@ -15,7 +28,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Representation Overlap Lab",
     description: "Why safety boundaries are not always cleanly separable.",
-    type: "website",
+    type: "article",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Representation Overlap Lab",
+    description: "Why safety boundaries are not always cleanly separable.",
   },
 };
 
@@ -25,7 +44,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.className}>
+    <html
+      lang="en"
+      className={`${sora.variable} ${lora.variable} ${dmMono.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

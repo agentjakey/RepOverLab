@@ -11,33 +11,33 @@ interface Props {
 function ExCard({ ex }: { ex: Example }) {
   const m = BAND_META[ex.safety_band];
   return (
-    <div className="bg-white rounded-xl border border-[#E2DDD6] p-5 h-full">
+    <div className="border border-[#DDD9D1] bg-white p-5 h-full">
       <span
-        className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full mb-3"
+        className="inline-block text-[11px] font-semibold px-2 py-0.5 mb-3"
         style={{ background: m.bg, color: m.text, border: `1px solid ${m.border}` }}
       >
         {m.label}
       </span>
-      <h4 className="font-bold text-[#1C1917] text-[15px] leading-snug mb-1">
+      <h4 className="font-bold text-[#1A1917] text-[15px] leading-snug mb-1">
         {ex.title}
       </h4>
-      <p className="text-[12px] text-[#57534E] mb-3">
+      <p className="text-[12px] text-[#5C5751] mb-3">
         {DOMAIN_LABELS[ex.domain] || ex.domain}
         {" · "}
         {FRAMING_LABELS[ex.framing] || ex.framing}
       </p>
-      <p className="text-[13px] text-[#57534E] leading-relaxed">
+      <p className="text-[13px] text-[#5C5751] leading-relaxed">
         {ex.safe_summary || ex.content_text.slice(0, 200) + "..."}
       </p>
 
-      <div className="mt-4 pt-4 border-t border-[#E2DDD6] grid grid-cols-2 gap-2 text-center">
+      <div className="mt-4 pt-4 border-t border-[#EAE7E0] grid grid-cols-2 gap-2 text-center">
         <div>
-          <p className="text-[11px] text-[#78716C]">Overlap</p>
-          <p className="font-bold text-[#1C1917]">{ex.overlap_score.toFixed(2)}</p>
+          <p className="text-[11px] text-[#79746E]">Overlap</p>
+          <p className="font-bold text-[#1A1917]">{ex.overlap_score.toFixed(2)}</p>
         </div>
         <div>
-          <p className="text-[11px] text-[#78716C]">Blur</p>
-          <p className="font-bold text-[#1C1917]">{ex.boundary_blur_score.toFixed(2)}</p>
+          <p className="text-[11px] text-[#79746E]">Blur</p>
+          <p className="font-bold text-[#1A1917]">{ex.boundary_blur_score.toFixed(2)}</p>
         </div>
       </div>
     </div>
@@ -80,22 +80,24 @@ export default function ComparePanel({ examples, neighbors }: Props) {
 
   return (
     <div>
-      <p className="text-[0.95rem] text-[#57534E] leading-relaxed mb-6 max-w-[60ch]">
-        Select any two examples to see their cosine similarity in full embedding space.
-        Similarity here is a measurement of how the model represents them — not a judgment
-        about whether they should be treated the same way.
-      </p>
+      <div className="essay-prose mb-8">
+        <p>
+          Select any two examples to see their cosine similarity in full embedding space.
+          Similarity here is a measurement of how the model represents them &mdash; not a
+          judgment about whether they should be treated the same way.
+        </p>
+      </div>
 
       {/* Selectors */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div>
-          <label className="block text-[12px] font-semibold text-[#57534E] uppercase tracking-wider mb-1.5">
+          <label className="block text-[11px] font-semibold text-[#5C5751] uppercase tracking-wider mb-2">
             Example A
           </label>
           <select
             value={idA}
             onChange={(e) => setIdA(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-[#E2DDD6] rounded-lg text-[13px] text-[#1C1917] focus:outline-none focus:border-[#1C1917]"
+            className="w-full px-3 py-2 bg-white border border-[#DDD9D1] text-[13px] text-[#1A1917] focus:outline-none focus:border-[#1A1917]"
           >
             {examples.map((ex) => (
               <option key={ex.id} value={ex.id}>
@@ -105,13 +107,13 @@ export default function ComparePanel({ examples, neighbors }: Props) {
           </select>
         </div>
         <div>
-          <label className="block text-[12px] font-semibold text-[#57534E] uppercase tracking-wider mb-1.5">
+          <label className="block text-[11px] font-semibold text-[#5C5751] uppercase tracking-wider mb-2">
             Example B
           </label>
           <select
             value={idB}
             onChange={(e) => setIdB(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-[#E2DDD6] rounded-lg text-[13px] text-[#1C1917] focus:outline-none focus:border-[#1C1917]"
+            className="w-full px-3 py-2 bg-white border border-[#DDD9D1] text-[13px] text-[#1A1917] focus:outline-none focus:border-[#1A1917]"
           >
             {examples.map((ex) => (
               <option key={ex.id} value={ex.id} disabled={ex.id === idA}>
@@ -125,12 +127,12 @@ export default function ComparePanel({ examples, neighbors }: Props) {
       {/* Similarity result */}
       {sim !== null && exA && exB && (
         <div
-          className={`mb-6 px-5 py-4 rounded-xl border ${
+          className={`mb-6 px-5 py-4 border-l-2 ${
             sameBand
-              ? "bg-[#F0FDF4] border-[#BBF7D0] text-[#14532D]"
+              ? "border-[#16A34A] bg-[#F0FDF4] text-[#14532D]"
               : sim >= 0.6
-              ? "bg-[#FEF2F2] border-[#FECACA] text-[#7F1D1D]"
-              : "bg-[#FFFBEB] border-[#FDE68A] text-[#78350F]"
+              ? "border-[#B91C1C] bg-[#FEF2F2] text-[#7F1D1D]"
+              : "border-[#B45309] bg-[#FFFBEB] text-[#78350F]"
           }`}
         >
           <p className="text-[13px] font-semibold mb-1">
@@ -144,10 +146,10 @@ export default function ComparePanel({ examples, neighbors }: Props) {
       )}
 
       {sim === null && exA && exB && (
-        <div className="mb-6 px-5 py-4 rounded-xl border bg-[#F8F6F1] border-[#E2DDD6] text-[#57534E]">
+        <div className="mb-6 px-5 py-4 border-l-2 border-[#DDD9D1] bg-[#F7F5F0] text-[#5C5751]">
           <p className="text-[13px]">
             These two examples are beyond the stored top-10 neighbor range. Their similarity is
-            low — likely below 0.3.
+            low &mdash; likely below 0.3.
           </p>
         </div>
       )}

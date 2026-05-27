@@ -8,22 +8,20 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ["ui-monospace", "SFMono-Regular", "monospace"],
+        sans: ["var(--font-sora)", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["var(--font-lora)", "Georgia", "Cambria", "Times New Roman", "serif"],
+        mono: ["var(--font-dm-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {
-        bg: "#F8F6F1",
-        surface: "#FFFFFF",
-        "surface-muted": "#F2EFE9",
-        text: "#1C1917",
-        muted: "#57534E",
-        border: "#E2DDD6",
-        accent: "#B91C1C",
-        "accent-soft": "#FEF2F2",
+        background: "#FAFAF8",
+        primary: "#1A1915",
+        secondary: "#5C5A54",
+        accent: "#C2411C",
+        border: "#E4E2DB",
+        "surface-muted": "#F0EDE8",
+        "accent-soft": "#FFF2EE",
         "blue-soft": "#EFF6FF",
         "amber-soft": "#FFFBEB",
-        "green-soft": "#F0FDF4",
-        "violet-soft": "#F5F3FF",
         band: {
           benign: "#1D4ED8",
           capability: "#6D28D9",
@@ -35,15 +33,6 @@ const config: Config = {
       maxWidth: {
         prose: "68ch",
         lab: "1100px",
-      },
-      typography: {
-        DEFAULT: {
-          css: {
-            color: "#1C1917",
-            lineHeight: "1.75",
-            fontSize: "1.0625rem",
-          },
-        },
       },
     },
   },

@@ -3,11 +3,11 @@ import clsx from "clsx";
 
 type Variant = "default" | "warning" | "info" | "ethics";
 
-const STYLES: Record<Variant, string> = {
-  default: "border-[#B91C1C] bg-[#FEF2F2] text-[#7F1D1D]",
-  warning: "border-[#B45309] bg-[#FFFBEB] text-[#78350F]",
-  info: "border-[#1D4ED8] bg-[#EFF6FF] text-[#1E3A8A]",
-  ethics: "border-[#6D28D9] bg-[#F5F3FF] text-[#4C1D95]",
+const BORDER_STYLES: Record<Variant, string> = {
+  default: "border-[#C2411C]",
+  warning: "border-[#B45309]",
+  info: "border-[#1D4ED8]",
+  ethics: "border-[#6D28D9]",
 };
 
 export default function CareNote({
@@ -20,14 +20,22 @@ export default function CareNote({
   className?: string;
 }) {
   return (
-    <div
+    <aside
       className={clsx(
-        "border-l-[3px] px-4 py-3 rounded-r-md text-[0.9rem] leading-relaxed my-6",
-        STYLES[variant],
+        "border-l-[3px] pl-5 py-1 my-8",
+        BORDER_STYLES[variant],
         className
       )}
     >
-      {children}
-    </div>
+      <div
+        className="text-[1.0625rem] leading-[1.8] text-[#5C5A54]"
+        style={{
+          fontFamily:
+            "var(--font-lora), Georgia, Cambria, 'Times New Roman', Times, serif",
+        }}
+      >
+        {children}
+      </div>
+    </aside>
   );
 }
