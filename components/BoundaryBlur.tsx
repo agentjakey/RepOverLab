@@ -49,6 +49,14 @@ export default function BoundaryBlur({ examples }: Props) {
           concepts are straightforwardly benign — they simply use language that crosses
           categorical boundaries.
         </p>
+        <p className="text-[0.9rem] text-[#79746E] border-l-2 border-[#E4E2DB] pl-4 not-italic">
+          Scores in this dataset cluster in the 0.99-1.00 range. This is expected:
+          all-MiniLM-L6-v2 produces cosine similarities in a compressed range across
+          general-topic text, and normalized Shannon entropy over three centroids
+          saturates quickly. The ranking is meaningful even when absolute values are
+          close. A concept scoring 0.994 is meaningfully less anchored than one scoring
+          1.000. This is an exploration heuristic, not a calibrated risk score.
+        </p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">

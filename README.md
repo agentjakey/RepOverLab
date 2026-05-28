@@ -67,7 +67,7 @@ precomputed and served as static JSON from `public/data/`.
 ## Local setup
 
 ```bash
-git clone https://github.com/agentjakey/representation-overlap-lab
+git clone https://github.com/agentjakey/RepOverLab
 cd representation-overlap-lab
 
 # Install dependencies

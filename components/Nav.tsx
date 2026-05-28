@@ -4,6 +4,7 @@ import { useState } from "react";
 
 const NAV_ITEMS = [
   { href: "#idea", label: "The Idea" },
+  { href: "#geometry", label: "Geometry" },
   { href: "#map", label: "The Map" },
   { href: "#blur", label: "Boundary Blur" },
   { href: "#compare", label: "Compare" },

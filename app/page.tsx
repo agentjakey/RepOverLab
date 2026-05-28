@@ -437,6 +437,50 @@ export default async function Home() {
             on GitHub. The dataset is a plain CSV file and is easy to audit.
           </CareNote>
         </Section>
+
+        {/* ── More in this series ──────────────────────────────── */}
+        <section className="py-16 px-6 border-b border-[#E4E2DB]">
+          <div className="prose-col">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#79746E] mb-8">
+              More visual essays in this series
+            </p>
+            <div className="space-y-6">
+              {[
+                {
+                  href: "https://failuremodeatlas.vercel.app/",
+                  title: "Failure Mode Atlas",
+                  desc: "Explores common AI safety failure modes.",
+                },
+                {
+                  href: "https://cot-faithfulness.vercel.app/",
+                  title: "CoT Faithfulness",
+                  desc: "Explores why chain-of-thought explanations can be unfaithful.",
+                },
+                {
+                  href: "https://neural-polysemanticity.vercel.app/",
+                  title: "Neural Polysemanticity",
+                  desc: "Explores why individual neurons can represent multiple concepts at once.",
+                },
+              ].map((p) => (
+                <div
+                  key={p.href}
+                  className="border-b border-[#E4E2DB] pb-6 last:border-0 last:pb-0"
+                >
+                  <a
+                    href={p.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[15px] font-semibold text-[#1A1915] underline underline-offset-2 decoration-[#C2411C] hover:text-[#C2411C] transition-colors"
+                  >
+                    {p.title}
+                  </a>
+                  <p className="text-[14px] text-[#5C5A54] mt-1">{p.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
       </main>
 
       <Footer />
