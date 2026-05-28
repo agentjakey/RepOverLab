@@ -1,9 +1,22 @@
 {
   "generated_at": "2026-05-26T20:34:46.210904+00:00",
+  "note": "All artifacts are precomputed offline using the Python pipeline in scripts/. No model inference occurs at runtime. The web app loads this JSON at build time.",
   "n_concepts": 113,
+  "n_domains": 10,
+  "n_bands": 5,
   "embedding_model": "all-MiniLM-L6-v2",
   "embedding_dim": 384,
+  "embedding_normalized": true,
+  "similarity_metric": "cosine",
+  "k_nearest_neighbors": 10,
+  "overlap_score_threshold": 0.6,
   "projection_method": "umap",
+  "umap_n_neighbors": 15,
+  "umap_min_dist": 0.1,
+  "umap_metric": "cosine",
+  "umap_random_state": 42,
+  "fallback_projection": "pca",
   "is_synthetic": false,
+  "precomputed_offline": true,
   "version": "0.1.0"
 }

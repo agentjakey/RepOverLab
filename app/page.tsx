@@ -198,9 +198,12 @@ export default async function Home() {
 
             <p>
               The 2D map in this lab is a UMAP projection from 384 dimensions down to 2. UMAP
-              preserves local neighborhood structure &mdash; points that appear close really are
-              semantically similar. But global distances are distorted. Two clusters that look
-              far apart may share more similarity than the map suggests.
+              attempts to preserve local neighborhood structure, so points that appear close
+              tend to have higher cosine similarity in the original embedding space. Global
+              distances are distorted. Two clusters that look far apart may be more similar
+              than the map suggests, and two clusters that look close may be less similar.
+              The similarity scores shown in the detail panel and neighbor lists are computed
+              directly in the original 384-dimensional space, not from the 2D layout.
             </p>
 
             <CareNote variant="warning">
@@ -383,7 +386,43 @@ export default async function Home() {
               <strong>Editorial categories.</strong> The five safety bands are editorial
               judgments, not ground truth validated against any benchmark.
             </p>
+            <p>
+              <strong>Model scope.</strong> all-MiniLM-L6-v2 is a small general-purpose
+              semantic similarity model, not a frontier language model. Its neighborhoods
+              reflect statistical patterns in general text, not the internal representations
+              of deployed safety classifiers or frontier chat models. Results should not be
+              generalized to those systems.
+            </p>
+            <p>
+              <strong>Single metric.</strong> Cosine similarity in this embedding space is
+              one view of conceptual proximity. Different embedding models, tokenizers, or
+              distance metrics can produce substantially different neighborhoods. The
+              patterns shown here are specific to all-MiniLM-L6-v2 and cosine similarity.
+            </p>
+            <p>
+              <strong>Heuristic scores.</strong> The overlap score and boundary blur score
+              are geometric exploration heuristics. They are not calibrated against any
+              safety benchmark and should not be used to draw conclusions about real-world
+              safety system performance or content risk.
+            </p>
+            <p>
+              <strong>Intended scope.</strong> This project is intended to build intuition
+              about embedding geometry, not to settle any technical question about AI safety
+              systems. Treat it as a starting point for thinking, not a research result.
+            </p>
           </div>
+
+          <p className="text-[0.85rem] text-[#79746E] mt-6 leading-relaxed">
+            Full artifact metadata (embedding model, UMAP parameters, generation timestamp)
+            is available at{" "}
+            <a
+              href="/data/metadata.json"
+              className="underline underline-offset-2 hover:text-[#1A1915] transition-colors"
+            >
+              /data/metadata.json
+            </a>
+            .
+          </p>
         </Section>
 
         {/* ── 08 Start Here ────────────────────────────────────────── */}

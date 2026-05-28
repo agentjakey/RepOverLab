@@ -247,7 +247,9 @@ export default function OverlapMap({ examples, neighbors }: Props) {
 
           {/* Caption */}
           <p className="fig-caption mt-2 text-center">
-            Distance is a teaching aid, not ground truth. Click any point to explore.
+            2D UMAP projection of 384-dimensional embeddings (n_neighbors=15, min_dist=0.1,
+            cosine metric). Visual distance is a teaching aid. Neighbor lists and similarity
+            scores in the panel are computed in the original embedding space.
           </p>
 
           {/* Legend */}
@@ -307,7 +309,7 @@ export default function OverlapMap({ examples, neighbors }: Props) {
               )}
 
               {/* Scores */}
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="grid grid-cols-2 gap-2 mb-1">
                 <div className="bg-[#F0EDE6] p-2.5 text-center">
                   <p className="text-[11px] text-[#79746E] mb-0.5">Overlap</p>
                   <p className="font-bold text-[#1A1917] text-[16px]">
@@ -317,10 +319,14 @@ export default function OverlapMap({ examples, neighbors }: Props) {
                 <div className="bg-[#F0EDE6] p-2.5 text-center">
                   <p className="text-[11px] text-[#79746E] mb-0.5">Blur</p>
                   <p className="font-bold text-[#1A1917] text-[16px]">
-                    {selectedEx.boundary_blur_score.toFixed(2)}
+                    {selectedEx.boundary_blur_score.toFixed(3)}
                   </p>
                 </div>
               </div>
+              <p className="text-[10px] text-[#79746E] mb-4 leading-relaxed">
+                Both are geometric heuristics from the original 384D embedding space,
+                not safety scores.
+              </p>
 
               {/* Cross-band neighbors */}
               {crossBandNeighbors.length > 0 && (
