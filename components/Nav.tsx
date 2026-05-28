@@ -20,9 +20,15 @@ export default function Nav() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#F7F5F0]/95 backdrop-blur border-b border-[#EAE7E0]">
       <div className="max-w-[1100px] mx-auto px-6 h-14 flex items-center justify-between">
         <a href="#top" className="group flex items-center">
-          <span className="text-[11px] font-semibold tracking-widest uppercase text-[#79746E] group-hover:text-[#1A1917] transition-colors">
+          <a
+            href="https://agentjakey.substack.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] font-semibold tracking-widest uppercase text-[#79746E] hover:text-[#1A1917] transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
             Latent Space Lab
-          </span>
+          </a>
           <span className="mx-2 text-[#C4C0BB] text-[10px]">/</span>
           <span className="text-[11px] font-semibold tracking-wider uppercase text-[#1A1917]">
             Representation Overlap
