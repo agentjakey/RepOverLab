@@ -31,7 +31,16 @@ export default function Footer() {
               About
             </p>
             <p className="text-[13px] text-[#5C5A54] leading-relaxed">
-              Built by Jacob Ortiz as a learning tool and public-interest resource.
+              Built by{" "}
+            <a
+              href="https://www.linkedin.com/in/jacob-ortiz-ab6421348/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-[#1A1915] transition-colors"
+            >
+              Jacob Ortiz
+            </a>{" "}
+            as a learning tool and public-interest resource.
               Representation Overlap Lab explores how embedding geometry can blur
               boundaries between benign, ambiguous, policy-relevant, and harmful-seeming
               concepts. It is an educational visualization, not a safety classifier,
@@ -77,7 +86,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom meta */}
-        <p className="text-[12px] text-[#79746E]">
+        <p className="text-[12px] text-[#79746E] mb-3">
           Last updated: May 2026 &middot; MIT License &middot;{" "}
           <a
             href="https://github.com/agentjakey/RepOverLab"
@@ -87,6 +96,18 @@ export default function Footer() {
           >
             GitHub
           </a>
+        </p>
+        <p className="text-[12px] text-[#79746E]">
+          If this was useful, you can{" "}
+          <a
+            href="https://ko-fi.com/agentjakey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-[#1A1915] transition-colors"
+          >
+            support my work on Ko-fi
+          </a>
+          .
         </p>
 
       </div>
